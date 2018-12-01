@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Transactions;
 
 namespace CSharpPerfEval
 {
@@ -7,28 +8,39 @@ namespace CSharpPerfEval
     {
         static void Main(string[] args)
         {
-
+            //USD,
+            //MXN,
+            //EUD,
+            //THB,
+            //GBP
             var testExchangeData = new List<ExchangeRate>()
             {
-                new ExchangeRate(Currency.EUD, Currency.GBP, 1.5),
-                new ExchangeRate(Currency.MXN, Currency.THB, 2.5),
-                new ExchangeRate(Currency.GBP, Currency.MXN, 3.5),
+                new ExchangeRate(Currency.USD, Currency.MXN, 1.5),
+                new ExchangeRate(Currency.USD, Currency.EUD, 2.5),
+                new ExchangeRate(Currency.USD, Currency.THB, 3.5),
                 new ExchangeRate(Currency.USD, Currency.GBP, 4.5),
-                new ExchangeRate(Currency.EUD, Currency.THB, 5.5),
-                new ExchangeRate(Currency.GBP, Currency.THB, 6.5),
+
+                
+                new ExchangeRate(Currency.MXN, Currency.EUD, 2.5),
+                new ExchangeRate(Currency.MXN, Currency.THB, 3.5),
+                new ExchangeRate(Currency.MXN, Currency.GBP, 4.5),
+
+                new ExchangeRate(Currency.EUD, Currency.THB, 3.5),
+                new ExchangeRate(Currency.EUD, Currency.GBP, 4.5),
+
+                new ExchangeRate(Currency.THB, Currency.GBP, 4.5)
+
             };
 
-            CurrencyConverter converter = new CurrencyConverter(testExchangeData);
+            var converter = new CurrencyConverter(testExchangeData);
 
             var reader = new FileReader();
-            var fileContents = reader.ReadFile("./accounts.txt");
-            var parser = new AccountParser();
-            var accounts = parser.ParseFile(fileContents);
 
-            foreach (var account in accounts)
-            {
-                Console.WriteLine(account);
-            }
+            var accounts = new AccountParser().ParseFile(reader.ReadFile("./accounts.txt"));
+            var transactions = new TransactionParser().ParseFile(reader.ReadFile("./transactions.txt"));
+
+
+
 
             //var accounts = new List<Account>()
             //{
@@ -44,16 +56,21 @@ namespace CSharpPerfEval
             //var transactions = new List<Transaction>() {
             //    new Bill(){ AccountNumber="12345", Amount= 200d, Bucket="Dues", Currency= Currency.EUD },
             //    new Bill(){ AccountNumber="12346", Amount= 100d, Bucket="Dues", Currency= Currency.GBP },
-                
+
             //    new Payment(){ AccountNumber="12345", Amount= 100d, Source="Online Payment", Currency= Currency.EUD},
             //    new Payment(){ AccountNumber="12345", Amount= 100d, Source="Online Payment", Currency= Currency.EUD },
             //    new Payment(){ AccountNumber="12346", Amount= 15d, Source="Online Payment", Currency= Currency.MXN },
             //};
-            //var processor = new Processor(converter, accounts, transactions);
+            var processor = new Processor(converter, accounts, transactions);
 
             //accounts.ForEach(a => Console.WriteLine($"Account: {a.AccountNumber}, Balance: {a.BalanceAmount}, {a.BalanceCurrency.ToString()}"));
 
-            //processor.Process();
+            processor.Process();
+
+                        foreach (var account in accounts)
+            {
+                Console.WriteLine(account);
+            }
 
             //accounts.ForEach(a => Console.WriteLine($"Account: {a.AccountNumber}, Balance: {a.BalanceAmount}, {a.BalanceCurrency.ToString()}"));
 
@@ -68,7 +85,7 @@ namespace CSharpPerfEval
             //    Console.WriteLine("------------------");
             //}
 
-            Console.ReadLine();
+            //Console.ReadLine();
 
         }
     }
@@ -198,9 +215,12 @@ namespace CSharpPerfEval
             foreach(var kvp in transactionsForAccount)
             {
                 var account =  accounts.Find(acc => acc.AccountNumber == kvp.Key);
-                foreach(var trans in kvp.Value)
+                if (account != null)
                 {
-                    ApplyTransactionToAccount(account, trans);
+                    foreach (var trans in kvp.Value)
+                    {
+                        ApplyTransactionToAccount(account, trans);
+                    }
                 }
             }
         }
@@ -227,7 +247,79 @@ namespace CSharpPerfEval
             }
         } 
     }
+    public class TransactionParser
+    {
+        public List<Transaction> ParseFile(string content)
+        {
+            var transactions = new List<Transaction>();
+            foreach (var line in content.Split("\r\n"))
+            {
+                var columns = line.Split("|");
+                Transaction transaction = null;
+                if (TryParse(columns, ref transaction))
+                {
+                    transactions.Add(transaction);
+                }
+                else
+                {
+                    Console.WriteLine($"Failed to import transaction: {line}");
+                }
+            }
 
+            return transactions;
+        }
+
+        // console.log(`${acctNum}|${Math.round(Math.random()*1000)} ${currencies[Math.round(Math.random() * (currencies.length-1))]}|${tran}|${notes}`)
+        public bool TryParse(string[] columns, ref Transaction transaction)
+        {
+            if (columns.Length != 4)
+                return false;
+
+            int account;
+            if (!int.TryParse(columns[0], out account))
+            {
+                return false;
+            }
+
+            var moneyParts = columns[1].Split(" ");
+            double currencyAmount;
+            Currency currencyType;
+            if (moneyParts.Length != 2
+                || !double.TryParse(moneyParts[0], out currencyAmount)
+                || !Enum.TryParse(moneyParts[1], out currencyType))
+            {
+                return false;
+            }
+
+            
+            if (columns[2] == "Bill")
+            {
+                transaction = new Bill()
+                {
+                    AccountNumber = account.ToString(),
+                    Amount = currencyAmount,
+                    Currency = currencyType,
+                    Bucket = columns[3]
+                };
+                return true;
+            }
+            if (columns[2] == "Payment")
+            {
+                transaction = new Payment()
+                {
+                    AccountNumber = account.ToString(),
+                    Amount = currencyAmount,
+                    Currency = currencyType,
+                    Source = columns[3]
+                };
+                return true;
+            }
+
+            return false;
+        }
+    }
+
+   
     public class AccountParser
     {
         public List<Account> ParseFile(string content)

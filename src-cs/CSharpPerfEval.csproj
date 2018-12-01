@@ -7,10 +7,14 @@
 
   <ItemGroup>
     <None Remove="Accounts.txt" />
+    <None Remove="transactions.txt" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Accounts.txt">
+    <Content Include="accounts.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="transactions.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

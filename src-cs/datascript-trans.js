@@ -1,9 +1,12 @@
 var currencies = ["MXN", "USD", "EUD", "GBP", "THB"]
 var trans = ["Bill", "Payment"]
 
-for (var i = 0; i < 1000000; ++i) { //accounts
 
-  var acctNum = Math.round(Math.random() * 110000) + 5000
+var numberOfAccounts = 120
+var numberOfTransactions = 1000
+for (var i = 0; i < numberOfTransactions; ++i) { //accounts
+
+  var acctNum = Math.round(Math.random() * numberOfAccounts) + 5000
 
   var tran = trans[Math.round(Math.random() * (trans.length - 1))]
   var notes = tran === "Bill" ? "Dues" : "Online Payment";
@@ -13,3 +16,4 @@ for (var i = 0; i < 1000000; ++i) { //accounts
 
 //AccountNumber="12345", Amount= 200d, Bucket="Dues", Currency= Currency.EUD },
 }
+
