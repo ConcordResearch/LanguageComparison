@@ -7,13 +7,13 @@ import Effect.Console (log)
 import Data.String (Pattern(..),  contains, drop, indexOf, length, take)
 import Data.String.CodeUnits (fromCharArray, toCharArray, singleton)
 import Data.Int (toNumber)
-import Data.Array (toUnfoldable, some)
+import Data.Array (toUnfoldable, some, zipWith)
 import Data.List ((:))
 import Data.List.Types (List(..))
 -- import Data.List.Lazy (replicate, snoc)
 -- import Data.List.Lazy.Types (List(..), Step(..),  step, nil, cons, (:))
 -- import Data.List.Lazy.Types (List(..)) as LList
-import Data.Either (either)
+import Data.Either (Either(..), either)
 import Data.Traversable (traverse, sequence, foldr)
 import Data.Foldable (foldMap, all)
 import Data.Unfoldable (replicateA)
@@ -188,27 +188,61 @@ makeFile =
 
 
 
--- runParser ::s -> Parser s a -> Either ParseError a
+-- type DecodeValidation e = Validation (DecodeErrors e)
 
-runLine l =
-  let 
-    f :: P (List String)
-    f = (makeRow "," makeField)
+-- runLine :: foreall a.  V (Array ParseError) a
+-- runLine line =
+--   let 
+--     row :: P (List String)
+--     row = (makeRow "," makeField)
 
-    parsed :: -> Either ParseError a
-    parsed = runParser l (makeRow "," makeField)
+--     -- runParser :: s -> Parser s a -> Either ParseError a
+--     parsed :: _ -> Either ParseError a
+--     parsed l = runParser l row
 
     
-    translate :: Either ParseError a -> 
-    translate p =
-      either 
-        (\(Either e a) -> --Either ParseError a
-          invalid $ [e])
-        (\r ->
-          )
-        p
+--     translate :: Either ParseError a -> V (Array ParseError) a -- List String
+--     translate p =
+--       either 
+--         (\(Either e a) -> --Either ParseError a
+--           invalid $ [e])  -- V (Array ParseError) a
+--         (\(Either e a) ->
+--           pure a)
+--         p
     
-  in
+--     validate    --pass in (List (P a)), then traverse with applicative
+--   in
+--     (translate (parsed line))
+
+--Lets try and parse the account line and pass in a list
+
+
+validateAccountNumber :: String -> V (Array ParseError) AccountNumber
+validateAccountNumber s =  invalid $ [ParseError "Some Error"  (Position {line: 1, column: 2})]
+
+validateMoney :: String -> V (Array ParseError) Money
+validateMoney s =  invalid $ [ParseError "Some Error"  (Position {line: 1, column: 2})]
+
+type InvalidAccount = 
+  { accountNumber :: String
+  , balance :: String
+  }
+
+validate :: InvalidAccount -> V (Array ParseError) Account
+validate acct = { accountNumber: _, balance: _ }
+  <$> validateAccountNumber acct.accountNumber
+  <*> validateMoney acct.balance
+
+
+testrow :: Either ParseError (List String)
+testrow = (runParser "1234,234 USD" (makeRow "," makeField))
+
+
+-- 
+
+
+
+
 
 
 
