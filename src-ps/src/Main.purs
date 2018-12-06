@@ -6,17 +6,56 @@ import Effect.Console (log)
 import Node.Encoding (Encoding(..))
 import Node.FS.Sync (readTextFile)
 import Data.Function (apply, applyFlipped)
+import Data.Foldable (foldl)
 import Data.String.Common (split)
 import Data.Int (fromString) as DataInt
 import Data.Number (fromString) as DataNumber
 import Data.Maybe (Maybe(..), maybe)
-import Data.Either (Either(..), either, isRight)
+import Data.Either (Either(..), either, isRight, isLeft)
 import Data.String (Pattern(..))
-import Data.Array (index, partition, length)
-import Data.Traversable (traverse)
+import Data.Array (index, partition, length, snoc, filter)
+import Data.Traversable (traverse, sequence)
 
 infixr 0 apply as <|
-infixr 0 applyFlipped as |>
+infixl 0 applyFlipped as |>
+
+rights :: forall a b. Array (Either a b) -> Array b
+rights array = 
+  let
+    addValidElement :: forall a b. Array b -> Either a b -> Array b
+    addValidElement accumulator (Left _) = accumulator
+    addValidElement accumulator (Right value) = snoc accumulator value
+  in
+    foldl 
+      addValidElement
+      []
+      array
+
+lefts :: forall a b. Array (Either a b) -> Array a
+lefts array = 
+  let
+    addValidElement :: forall a b. Array a -> Either a b -> Array a
+    addValidElement accumulator (Left value) = snoc accumulator value
+    addValidElement accumulator (Right _) = accumulator 
+  in
+    foldl 
+      addValidElement
+      [] 
+      array
+
+
+emptyAccount = 
+  { accountNumber: "0"
+  , balance: {currency: USD, amount: 0.0}
+  , name: ""
+  }
+
+emptyTransaction =
+  Bill 
+    { accountNumber: "0"
+    , amount: {currency: USD, amount: 0.0}
+    , bucket: ""
+    }
 
 main :: Effect Unit
 main = do
@@ -29,21 +68,36 @@ main = do
   transactionsText <- readTextFile UTF8 "transactions.txt"  
   
   let accounts = parseAccounts accountsText
-  let validAccounts = partition isRight accounts
+  let accountErrors = lefts accounts
+  let validAccounts = rights accounts
   
   --Array (Either String Account) ->  () -> Effect ()
   -- Array (Effect ())
   --traverse :: forall a b m. Applicative m => (a -> m b) -> t a -> m (t b)
 
-  _ <- traverse (either log (show >>> log)) validAccounts.yes
-  _ <- traverse (either log (show >>> log)) validAccounts.no
+  -- _ <- traverse (either log (show >>> log)) validAccounts.yes
+  -- _ <- traverse (either log (show >>> log)) validAccounts.no
 
-  log <| "Valid accounts: " <> show (length validAccounts.yes)
+  
+  
 
-  -- let transactions = parseTransactions transactionsText
+  let transactions = parseTransactions transactionsText
+  let transactionErrors = lefts transactions
+  let validTransactions = rights transactions
+  
+  -- t (m a) -> m (t a)
+  -- Array (Either String Transaction) -> Either String (Array Transaction)
+  -- sequence validTransactions.yes
+  -- _ <- traverse (either log (show >>> log)) validTransactions.yes
+  -- _ <- traverse (either log (show >>> log)) validTransactions.no
+  
+  
 
-  -- let newAccounts = processTransactions accounts transactions
-  -- newAccounts |> log
+  -- log <| "Valid accounts: " <> show (length validAccounts.yes)
+  -- log <| "Valid transactions: " <> show (length validTransactions.yes)
+
+  let newAccounts = processTransactions validAccounts validTransactions
+  -- map show newAccounts |> log
   -- log (show { accountNumber: "12345", balance: { amount: 100.0, currency: USD}, name: "Joe Smith"})
 
 data Currency = USD | MXN | EUD | THB | GBP 
@@ -55,9 +109,9 @@ instance showCurrency :: Show Currency where
   show GBP = "GBP"
 
 
-type Money = 
+type Money a = 
   { amount :: Number
-  , currency :: Currency
+  , currency :: a
   }
 
 type AccountNumber = String
@@ -79,23 +133,26 @@ data Transaction
     , amount :: Money
     , source :: String
     }
-
--- accounts = 
---   [ { accountNumber: "12345", balance: { amount: 100.0, currency: USD}, name: "Joe Smith"}
---   , { accountNumber: "12346", balance: { amount: 200.0, currency: USD}, name: "Joe Smyth"}
---   ]
-
--- transactions = 
---   [ Bill { accountNumber: "12345", amount: { amount: 300.0, currency: THB }, bucket: "Dues"  }
---   , Bill { accountNumber: "12346", amount: { amount: 400.0, currency: THB }, bucket: "Dues"  }
---   , Payment { accountNumber: "12345", amount: { amount: 500.0, currency: THB }, source: "Online Payment"  }
---   , Payment { accountNumber: "12346", amount: { amount: 600.0, currency: THB }, source: "Online Payment"  }
---   ]
+instance showTransaction :: Show Transaction where
+  show (Bill {accountNumber, amount, bucket}) = 
+    "Bill - accountNumber: " 
+      <> (show accountNumber) 
+      <> ", amount: "
+      <> (show amount)
+      <> ", bucket: "
+      <> bucket
+  show (Payment {accountNumber, amount, source}) = 
+    "Bill - accountNumber: " 
+      <> (show accountNumber) 
+      <> ", amount: "
+      <> (show amount)
+      <> ", source: "
+      <> source
 
 parseAccounts :: String -> Array (Either String Account)
 parseAccounts text =
   let
-    lines = split (Pattern "\r\n") text
+    lines = split (Pattern "\n") text
     lineOrErrorMessage line = 
       maybe 
         (Left <| "Error parsing account line: " <> line) 
@@ -107,25 +164,31 @@ parseAccounts text =
 parseAccount :: String -> Maybe Account
 parseAccount text = do
   let fields = split (Pattern "|") text
-  accountNumber <- getAccountNumber fields
-  balance <- getAmount fields
+  accountNumber <- getAccountNumber fields 0
+  balance <- getAmount fields 1
   name <- index fields 2 
   pure { accountNumber, balance, name}
 
-getAccountNumber :: Array String -> Maybe AccountNumber
-getAccountNumber [accountText, _, _] =
-  map show <| (DataInt.fromString accountText)
-getAccountNumber _ = Nothing  
+getAccountNumber :: Array String -> Int -> Maybe AccountNumber
+getAccountNumber fields i =
+  index fields i 
+    >>= DataInt.fromString 
+    >>= show >>> pure
+  -- this is the same thing using do notation instead of bind (aka >>=) directly
+  -- do
+  --   accountText <- index fields i
+  --   accountNumber <- DataInt.fromString accountText
+  --   pure <| show accountNumber
 
-getAmount :: Array String -> Maybe Money
-getAmount [_, amountText, _] = do
+getAmount :: Array String -> Int -> Maybe Money
+getAmount fields i = do
+  amountText <- index fields i 
   let amountParts = split (Pattern " ") amountText
   firstText <- index amountParts 0 
   currencyText <- index amountParts 1 
   amount <- DataNumber.fromString firstText
   currency <- parseCurrency currencyText  
   pure ({amount, currency})
-getAmount _ = Nothing  
 
 parseCurrency :: String -> Maybe Currency
 parseCurrency "USD" = Just USD
@@ -139,10 +202,10 @@ parseCurrency _ = Nothing
 parseTransactions :: String -> Array (Either String Transaction)
 parseTransactions text =
   let
-    lines = split (Pattern "\r\n") text
+    lines = split (Pattern "\n") text
     lineOrErrorMessage line = 
       maybe 
-        (Left <| "Error parsing transaction line: " <> line) 
+        (Left <| "Error parsing transaction line: " <> line)
         Right
         (parseTransaction line)
   in
@@ -151,24 +214,35 @@ parseTransactions text =
 parseTransaction :: String -> Maybe Transaction
 parseTransaction text = do
   let fields = split (Pattern "|") text
-  accountNumber <- getAccountNumber fields
-  balance <- getAmount fields
+  accountNumber <- getAccountNumber fields 0
+  amount <- getAmount fields 1
   transtype <- index fields 2
   transDetails <- index fields 3
-  let transaction =
-    case transtype of
-      "Bill" -> pure <| Bill { accountNumber, balance, bucket: transDetails}
-      "Payment" -> pure <| Payment { accountNumber, balance, source: transDetails}
-      _ -> Nothing
   
--- processTransactions :: Array Account -> Array Transaction -> Array Account
+  case transtype of
+    "Bill" -> pure <| Bill { accountNumber, amount, bucket: transDetails}
+    "Payment" -> pure <| Payment { accountNumber, amount, source: transDetails}
+    _ -> Nothing
 
+processTransactions :: Dictionary AccountNumber Account -> Array Transaction -> Dictionary AccountNumber Account
+processTransactions accounts (Payment payment) =
+  let
+    account = get accounts payment.accountNumber
+    newAccount = map ? account
+    
+  in
+    set accounts payment.accountNumber newAccount
+processTransactions accounts (Bill bill) =
 
-
-
-
-
-
-
-
-
+processTransaction :: Dictionary AccountNumber Account -> AccountNumber -> Transaction -> Dictionary AccountNumber Account
+processTransaction accounts accountNumber transaction = 
+  let
+    mapOperation = case transaction of
+      Bill bill -> (\account -> applyMoneyAmount { amount, currency account.balance bill.amount)
+      Payment payment -> (\account -> apply account.balance -payment.amount)
+    account = get accounts accountNumber
+    newAccount = map mapOperation account
+  in
+    
+applyMoneyAmount :: Money -> Number -> Money
+applyMoneyAmount {amount, currency}  = { amount: money.amount + amount, currency: money.currency }
