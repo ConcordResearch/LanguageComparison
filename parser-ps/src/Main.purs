@@ -13,6 +13,7 @@ import Data.List.Types (List(..))
 -- import Data.List.Lazy (replicate, snoc)
 -- import Data.List.Lazy.Types (List(..), Step(..),  step, nil, cons, (:))
 -- import Data.List.Lazy.Types (List(..)) as LList
+import Data.Maybe (Maybe(..))
 import Data.Either (Either(..), either)
 import Data.Traversable (traverse, sequence, foldr)
 import Data.Foldable (foldMap, all)
@@ -217,32 +218,70 @@ makeFile =
 --Lets try and parse the account line and pass in a list
 
 
-validateAccountNumber :: String -> V (Array ParseError) AccountNumber
-validateAccountNumber s =  invalid $ [ParseError "Some Error"  (Position {line: 1, column: 2})]
+-- validateAccountNumber :: String -> V (Array ParseError) AccountNumber
+-- validateAccountNumber s =  invalid $ [ParseError "Some Error"  (Position {line: 1, column: 2})]
 
-validateMoney :: String -> V (Array ParseError) Money
-validateMoney s =  invalid $ [ParseError "Some Error"  (Position {line: 1, column: 2})]
+-- validateMoney :: String -> V (Array ParseError) Money
+-- validateMoney s =  invalid $ [ParseError "Some Error"  (Position {line: 1, column: 2})]
 
-type InvalidAccount = 
-  { accountNumber :: String
-  , balance :: String
-  }
+-- type InvalidAccount = 
+--   { accountNumber :: String
+--   , balance :: String
+--   }
 
-validate :: InvalidAccount -> V (Array ParseError) Account
-validate acct = { accountNumber: _, balance: _ }
-  <$> validateAccountNumber acct.accountNumber
-  <*> validateMoney acct.balance
-
-
-testrow :: Either ParseError (List String)
-testrow = (runParser "1234,234 USD" (makeRow "," makeField))
+-- validate :: InvalidAccount -> V (Array ParseError) Account
+-- validate acct = { accountNumber: _, balance: _ }
+--   <$> validateAccountNumber acct.accountNumber
+--   <*> validateMoney acct.balance
 
 
--- 
+-- testrow :: Either ParseError (List String)
+-- testrow = (runParser "1234,234 USD" (makeRow "," makeField))
+
+
+-- take in the string/cursor
+-- you have the mechanism to break down by newline
+
+-- how do I traverse over a list, whats the signature
+-- partially apply one part of the traverse, then 
 
 
 
 
+--toField :: a -> m b
+
+-- what does a trraverse/traverse look like
+
+--WORKS
+  -- (String -> Maybe (Array Char)) -> Array String -> Maybe (Array Char)
+-- > traverse (\s -> parse s digit) ["1", "2", "3"]
+-- (Right ['1','2','3'])
+
+--   (String -> Maybe (List Char)) -> Array String -> Maybe (Array (List Char))
+-- > traverse (\s -> parse s (digit `sepBy1` (string ","))) ["1,2,3"]
+-- (Right [('1' : '2' : '3' : Nil)])
+
+-- 2 contexts - 
+--   1) result of parse             Maybe String
+--   2) List  of strings (columns)  ["1", "2", "3"]
+
+-- The result of parse also then needs to convert the either
+-- Then the either to extract the information into a V
+
+
+
+
+v :: Array String
+v = ["1", "2", "3"]
+v' :: Array (Maybe (Array String))
+v' = [Just (["1", "2", "3"]), Just (["4", "5", "6"])]
+
+f :: String -> Maybe 
+f s = parse s (digit `sepBy1` (string ","))
+--traverse :: forall a b m t. Traversable t => Applicative m => (a -> m b) -> t a -> m (t b)
+fv = traverse f v
+
+--maybe parse 123 with digit in tofield
 
 
 

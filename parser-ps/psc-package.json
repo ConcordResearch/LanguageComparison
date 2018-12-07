@@ -11,6 +11,7 @@
     "foldable-traversable",
     "integers",
     "lists",
+    "maybe",
     "prelude",
     "psci-support",
     "strings",
