@@ -8,7 +8,7 @@ import Data.String (Pattern(..),  contains, drop, indexOf, length, take)
 import Data.String.CodeUnits (fromCharArray, toCharArray, singleton)
 import Data.Int (toNumber)
 import Data.Array (toUnfoldable, some, zipWith)
-import Data.List ((:))
+import Data.List ((:), many)
 import Data.List.Types (List(..))
 -- import Data.List.Lazy (replicate, snoc)
 -- import Data.List.Lazy.Types (List(..), Step(..),  step, nil, cons, (:))
@@ -27,7 +27,7 @@ import Text.Parsing.Parser (Parser(..), ParseError(..), runParser, ParserT)
 import Text.Parsing.Parser.Language (javaStyle, haskellStyle, haskellDef)
 import Text.Parsing.Parser.Token (TokenParser, makeTokenParser, digit, letter, upper)
 import Text.Parsing.Parser.String (string, eof, satisfy)
-import Text.Parsing.Parser.Combinators (sepBy, sepBy1, sepEndBy, sepEndBy1)
+import Text.Parsing.Parser.Combinators (sepBy, sepBy1, sepEndBy, sepEndBy1, manyTill )
 import Text.Parsing.Parser.Pos (Position(..))
 
 import Text.Parsing.CSV ( defaultParsers, makeParsers) --, Parsers, P, makeQuoted, makeChars, makeQchars, makeField, makeFile, , makeFileHeaded)
@@ -271,7 +271,7 @@ makeFile =
 
 
 
-h :: Either ParseError (Array (V (Array ParseError) String))
+-- h :: Either ParseError (Array (V (Array ParseError) String))
 h =
   let
     -- parse a line into strings, with separator ','
@@ -284,32 +284,45 @@ h =
     hi :: P (List String)
     hi = do
       a <- fi
-      _ <- string "\n"
+      _ <- string "\n" 
       pure a
 
     -- this can be the decoder which parses each lines values
     decode :: List String -> V (Array ParseError) String
-    decode ls = invalid [ParseError "Some Error"  (Position {line: 1, column: 2})] 
-    -- decode ls = pure $ foldl (\acc val -> append acc val) "" ls
+    -- decode ls = invalid [ParseError "Some Error"  (Position {line: 1, column: 2})] 
+    decode ls = pure $ foldl (\acc val -> append acc val) "" ls
 
     -- combines the decoder and line parser
-    ji :: P (List String) -> P (V (Array ParseError) String) --use this as the decoder
-    ji pls = decode <$> pls
+    -- ji :: P (List String) -> P (V (Array ParseError) String) --use this as the decoder
+    -- ji pls = decode <$> pls
+    ji :: P (V (Array ParseError) String) --use this as the decoder
+    ji = decode <$> hi
 
-    gi :: String -> Either ParseError (V (Array ParseError) String)
-    gi s = parse s (ji hi)
+    -- Can we get rid of parse???
+    -- gi :: String -> Either ParseError (V (Array ParseError) String)
+    -- gi s = parse s (ji hi)
 
-    -- ki = do
-    --   a <- ji hi
-    --   end 
 
-    --      row parser
-    file :: P (List String) -> P (List (List String))
-    file r = r `sepEndBy` string "\n" <* eof
+    -- mi = manyTill ji eof
+
+    mi = (many ji) <* eof
+
+    -- is either parsable or ||| EOF
+    -- use (list (ji hi)) ||| eof
+    -- use applicative to tie together ??  
+
+    -- --      row parser
+    -- file :: P (List String) -> P (List (List String))
+    -- -- get
+    -- file r = r `sepEndBy` string "\n" <* eof
 
   in 
-    traverse (gi) ["1,2,3\n4,5,6"]
+    mi
+    -- parse "1,2,3" mi  
+    -- parse "1,2,3\n4,5,6" ki 
+    -- traverse (gi) ["1,2,3\n4,5,6"]
 
+-- runTil :: 
 
 
 v :: Array String
@@ -323,6 +336,10 @@ f s = parse s (digit `sepBy1` (string ","))
 fv = traverse f v
 
 --maybe parse 123 with digit in tofield
+
+
+-- la = manyTill digit (string "\n")
+-- pa = parse la "1232\n"
 
 
 
