@@ -1,6 +1,6 @@
 module Main where
 
-import Prelude -- (Monad(..))
+import Prelude
 import Effect (Effect)
 import Effect.Console (log)
 
@@ -16,17 +16,18 @@ import Data.List.Types (List(..))
 import Data.Maybe (Maybe(..))
 import Data.Either (Either(..), either)
 import Data.Traversable (traverse, sequence, foldr)
-import Data.Foldable (foldMap, all)
+import Data.Foldable (foldMap, all, foldl)
 import Data.Unfoldable (replicateA)
 import Data.Validation.Semigroup (V, invalid)
 
+import Control.Applicative (pure)
 import Control.Plus ((<|>))
 
 import Text.Parsing.Parser (Parser(..), ParseError(..), runParser, ParserT)
 import Text.Parsing.Parser.Language (javaStyle, haskellStyle, haskellDef)
 import Text.Parsing.Parser.Token (TokenParser, makeTokenParser, digit, letter, upper)
-import Text.Parsing.Parser.String (string, satisfy)
-import Text.Parsing.Parser.Combinators (sepBy1)
+import Text.Parsing.Parser.String (string, eof, satisfy)
+import Text.Parsing.Parser.Combinators (sepBy, sepBy1, sepEndBy, sepEndBy1)
 import Text.Parsing.Parser.Pos (Position(..))
 
 import Text.Parsing.CSV ( defaultParsers, makeParsers) --, Parsers, P, makeQuoted, makeChars, makeQchars, makeField, makeFile, , makeFileHeaded)
@@ -270,13 +271,53 @@ makeFile =
 
 
 
+h :: Either ParseError (Array (V (Array ParseError) String))
+h =
+  let
+    -- parse a line into strings, with separator ','
+    fi :: P (List String)
+    fi  = makeField `sepBy1` (string ",")
+
+    -- gi s = parse s (fi `sepBy` (string "\n")) --dont do sepBy
+    
+    --parse a line ending in a '\n'
+    hi :: P (List String)
+    hi = do
+      a <- fi
+      _ <- string "\n"
+      pure a
+
+    -- this can be the decoder which parses each lines values
+    decode :: List String -> V (Array ParseError) String
+    decode ls = invalid [ParseError "Some Error"  (Position {line: 1, column: 2})] 
+    -- decode ls = pure $ foldl (\acc val -> append acc val) "" ls
+
+    -- combines the decoder and line parser
+    ji :: P (List String) -> P (V (Array ParseError) String) --use this as the decoder
+    ji pls = decode <$> pls
+
+    gi :: String -> Either ParseError (V (Array ParseError) String)
+    gi s = parse s (ji hi)
+
+    -- ki = do
+    --   a <- ji hi
+    --   end 
+
+    --      row parser
+    file :: P (List String) -> P (List (List String))
+    file r = r `sepEndBy` string "\n" <* eof
+
+  in 
+    traverse (gi) ["1,2,3\n4,5,6"]
+
+
 
 v :: Array String
 v = ["1", "2", "3"]
 v' :: Array (Maybe (Array String))
 v' = [Just (["1", "2", "3"]), Just (["4", "5", "6"])]
 
-f :: String -> Maybe 
+-- f :: String -> Maybe 
 f s = parse s (digit `sepBy1` (string ","))
 --traverse :: forall a b m t. Traversable t => Applicative m => (a -> m b) -> t a -> m (t b)
 fv = traverse f v
@@ -302,14 +343,6 @@ fv = traverse f v
 -- validate acct = { accountNumber: _, balance: _ }
 --   <$> validateAccountNumber acct.accountNumber
 --   <*> validateMoney acct.balance
-  
-
-
-
-headerColumns = 1
-separator = ","
-newParser = makeParsers '"' "," "\n"
-
 
 parseResult = runParser testFile defaultParsers.file
 parse = runParser
