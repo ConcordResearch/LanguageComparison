@@ -19,6 +19,8 @@ import Data.Traversable (traverse, sequence, foldr)
 import Data.Foldable (foldMap, all, foldl)
 import Data.Unfoldable (replicateA)
 import Data.Validation.Semigroup (V, invalid)
+import Data.Map (Map(..), fromFoldable)
+import Data.Tuple.Nested ((/\))
 
 import Control.Applicative (pure)
 import Control.Plus ((<|>))
@@ -27,7 +29,7 @@ import Text.Parsing.Parser (Parser(..), ParseError(..), runParser, ParserT)
 import Text.Parsing.Parser.Language (javaStyle, haskellStyle, haskellDef)
 import Text.Parsing.Parser.Token (TokenParser, makeTokenParser, digit, letter, upper)
 import Text.Parsing.Parser.String (string, eof, satisfy)
-import Text.Parsing.Parser.Combinators (sepBy, sepBy1, sepEndBy, sepEndBy1, manyTill )
+import Text.Parsing.Parser.Combinators (sepBy, sepBy1, sepEndBy, sepEndBy1, manyTill, endBy)
 import Text.Parsing.Parser.Pos (Position(..))
 
 import Text.Parsing.CSV ( defaultParsers, makeParsers) --, Parsers, P, makeQuoted, makeChars, makeQchars, makeField, makeFile, , makeFileHeaded)
@@ -166,94 +168,121 @@ makeField =
   makeChars $ "," <> "\n"
 
 -- parse testRow $ makeRow "," makeField
-makeRow :: String -> P String -> P (List String)
-makeRow sep p = p `sepBy1` (string sep)
+-- makeRow :: String -> P String -> P (List String)
+-- makeRow sep p = p `sepBy1` (string sep)
 
-makeFile :: P (List (List String))
-makeFile =
-  let
-    -- parseAccount :: P Account
-    decoder = parseAccount
+-- makeFile :: P (List (List String))
+-- makeFile =
+--   let
+--     -- parseAccount :: P Account
+--     decoder = parseAccount
 
-    f :: P (List String)
-    f = (makeRow "," makeField)
+--     f :: P (List String)
+--     f = (makeRow "," makeField)
     
-    -- g :: P Account -> P (List String) -> P 
-    -- g = 
-  in
-    f `sepBy1` (string "\n")
-
--- do validation
---parse a row, then check results, if failed create a Error validation, Else attach the correct result
-
---handle errors
-
-
-
--- type DecodeValidation e = Validation (DecodeErrors e)
-
--- runLine :: foreall a.  V (Array ParseError) a
--- runLine line =
---   let 
---     row :: P (List String)
---     row = (makeRow "," makeField)
-
---     -- runParser :: s -> Parser s a -> Either ParseError a
---     parsed :: _ -> Either ParseError a
---     parsed l = runParser l row
-
-    
---     translate :: Either ParseError a -> V (Array ParseError) a -- List String
---     translate p =
---       either 
---         (\(Either e a) -> --Either ParseError a
---           invalid $ [e])  -- V (Array ParseError) a
---         (\(Either e a) ->
---           pure a)
---         p
-    
---     validate    --pass in (List (P a)), then traverse with applicative
+--     -- g :: P Account -> P (List String) -> P 
+--     -- g = 
 --   in
---     (translate (parsed line))
-
---Lets try and parse the account line and pass in a list
+--     f `sepBy1` (string "\n")
 
 
--- validateAccountNumber :: String -> V (Array ParseError) AccountNumber
--- validateAccountNumber s =  invalid $ [ParseError "Some Error"  (Position {line: 1, column: 2})]
 
--- validateMoney :: String -> V (Array ParseError) Money
--- validateMoney s =  invalid $ [ParseError "Some Error"  (Position {line: 1, column: 2})]
 
--- type InvalidAccount = 
---   { accountNumber :: String
---   , balance :: String
---   }
+-- h :: Either ParseError (Array (V (Array ParseError) String))
+-- j :: forall a. String -> String -> (List String -> V (Array ParseError) a) -> P (List (V (Array ParseError) a))
+j :: forall a. String -> String -> (List String -> V (Array ParseError) a) -> P (V (Array ParseError) (List a))
+j seperator eol decoder' =
+  let
+    -- parse a line into strings, with separator ','
+    fields :: P (List String)
+    fields  = makeField `sepBy1` (string ",")
 
--- validate :: InvalidAccount -> V (Array ParseError) Account
--- validate acct = { accountNumber: _, balance: _ }
+    --parse a line ending in a '\n'
+    line :: String -> P (List String)
+    line eol' = fields <* string eol'
+    
+    -- combines the decoder and line parser
+    -- ji :: P (List String) -> P (V (Array ParseError) String) --use this as the decoder
+    -- ji pls = decode <$> pls
+    decodeLine :: forall a. String -> String -> (List String -> V (Array ParseError) a) -> P (V (Array ParseError) a) --use this as the decoder
+    decodeLine sep eol decode = decode <$> (line eol)
+
+    mi = (many (decodeLine seperator eol decoder')) <* eof
+
+    -- -- this can be the decoder which parses each lines values
+    -- decoder :: forall a. List String -> V (Array ParseError) a
+    -- -- decode ls = invalid [ParseError "Some Error"  (Position {line: 1, column: 2})] 
+    -- decoder ls = pure $ foldl (\acc val -> append acc val) "" ls
+
+    merge :: forall a. P (List (V (Array ParseError) a)) -> P (V (Array ParseError) (List a))
+    merge p = do
+      i <- p
+      pure $ sequence i
+
+  in 
+    merge mi
+
+h = j "," "\n" stringDecoder
+
+-- k = parse "123,456 USD" parseAccount
+
+-- this can be the decoder which parses each lines values
+stringDecoder :: List String -> V (Array ParseError) String
+-- decode ls = invalid [ParseError "Some Error"  (Position {line: 1, column: 2})] 
+stringDecoder ls = pure $ foldl (\acc val -> append acc val) "" ls
+
+
+
+
+validateAccountNumber :: String -> V (Array ParseError) AccountNumber
+validateAccountNumber s =  invalid $ [ParseError "Some Error"  (Position {line: 1, column: 2})]
+
+validateMoney :: String -> V (Array ParseError) Money
+validateMoney s =  invalid $ [ParseError "Some Error"  (Position {line: 1, column: 2})]
+
+type InvalidAccount = 
+  { accountNumber :: String
+  , balance :: String
+  }
+
+-- accountDecoder :: List String -> V (Array ParseError) Account
+-- accountDecoder ls = { accountNumber: _, balance: _ }
 --   <$> validateAccountNumber acct.accountNumber
 --   <*> validateMoney acct.balance
 
+-- type Decoder = Decoder a --an applicateive
+--takes a (List String) -> 
 
--- testrow :: Either ParseError (List String)
--- testrow = (runParser "1234,234 USD" (makeRow "," makeField))
+headers :: Map String String
+headers =
+  fromFoldable 
+  [ "" /\ ""
+  , "" /\ ""
+  ]
+
+type Header a =
+  { name :: String
+  , position :: Int
+  }
+
+--create a decoder
+-- __ :: Map String _ -> Map String (Parser) -> Decoder a
+-- __ headers validators =
+--   let 
+--     f {name, position} = 
+--     -- return 'Parser Set' which has more metadata like index, parser, column header
+--   in
+--     f <$> headers
+
+  -- map over the headers
+  -- find validator out of headers
+  -- append parser to list of parsers, can we attach more metadata?
 
 
--- take in the string/cursor
--- you have the mechanism to break down by newline
-
--- how do I traverse over a list, whats the signature
--- partially apply one part of the traverse, then 
 
 
 
-
---toField :: a -> m b
-
--- what does a trraverse/traverse look like
-
---WORKS
+-- Traverse with parser
   -- (String -> Maybe (Array Char)) -> Array String -> Maybe (Array Char)
 -- > traverse (\s -> parse s digit) ["1", "2", "3"]
 -- (Right ['1','2','3'])
@@ -261,86 +290,6 @@ makeFile =
 --   (String -> Maybe (List Char)) -> Array String -> Maybe (Array (List Char))
 -- > traverse (\s -> parse s (digit `sepBy1` (string ","))) ["1,2,3"]
 -- (Right [('1' : '2' : '3' : Nil)])
-
--- 2 contexts - 
---   1) result of parse             Maybe String
---   2) List  of strings (columns)  ["1", "2", "3"]
-
--- The result of parse also then needs to convert the either
--- Then the either to extract the information into a V
-
-
-
--- h :: Either ParseError (Array (V (Array ParseError) String))
-h =
-  let
-    -- parse a line into strings, with separator ','
-    fi :: P (List String)
-    fi  = makeField `sepBy1` (string ",")
-
-    -- gi s = parse s (fi `sepBy` (string "\n")) --dont do sepBy
-    
-    --parse a line ending in a '\n'
-    hi :: P (List String)
-    hi = do
-      a <- fi
-      _ <- string "\n" 
-      pure a
-
-    -- this can be the decoder which parses each lines values
-    decode :: List String -> V (Array ParseError) String
-    -- decode ls = invalid [ParseError "Some Error"  (Position {line: 1, column: 2})] 
-    decode ls = pure $ foldl (\acc val -> append acc val) "" ls
-
-    -- combines the decoder and line parser
-    -- ji :: P (List String) -> P (V (Array ParseError) String) --use this as the decoder
-    -- ji pls = decode <$> pls
-    ji :: P (V (Array ParseError) String) --use this as the decoder
-    ji = decode <$> hi
-
-    -- Can we get rid of parse???
-    -- gi :: String -> Either ParseError (V (Array ParseError) String)
-    -- gi s = parse s (ji hi)
-
-
-    -- mi = manyTill ji eof
-
-    mi = (many ji) <* eof
-
-    -- is either parsable or ||| EOF
-    -- use (list (ji hi)) ||| eof
-    -- use applicative to tie together ??  
-
-    -- --      row parser
-    -- file :: P (List String) -> P (List (List String))
-    -- -- get
-    -- file r = r `sepEndBy` string "\n" <* eof
-
-  in 
-    mi
-    -- parse "1,2,3" mi  
-    -- parse "1,2,3\n4,5,6" ki 
-    -- traverse (gi) ["1,2,3\n4,5,6"]
-
--- runTil :: 
-
-
-v :: Array String
-v = ["1", "2", "3"]
-v' :: Array (Maybe (Array String))
-v' = [Just (["1", "2", "3"]), Just (["4", "5", "6"])]
-
--- f :: String -> Maybe 
-f s = parse s (digit `sepBy1` (string ","))
---traverse :: forall a b m t. Traversable t => Applicative m => (a -> m b) -> t a -> m (t b)
-fv = traverse f v
-
---maybe parse 123 with digit in tofield
-
-
--- la = manyTill digit (string "\n")
--- pa = parse la "1232\n"
-
 
 
 --Example of Using Validation
