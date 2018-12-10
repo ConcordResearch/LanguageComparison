@@ -10,6 +10,7 @@
     "integers",
     "node-fs",
     "numbers",
+    "ordered-collections",
     "prelude",
     "psci-support",
     "strings"
