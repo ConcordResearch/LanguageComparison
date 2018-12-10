@@ -2,12 +2,11 @@ module Main where
 
 import Prelude
 
-import Data.Array (index, partition, length, snoc, filter)
+import Data.Array (index, partition, length, snoc, filter, nub)
 import Data.Either (Either(..), either, isRight, isLeft)
 import Data.Foldable (foldl)
 import Data.Function (apply, applyFlipped)
 import Data.Int (fromString) as DataInt
-import Data.List (nub)
 import Data.List.Lazy (elemLastIndex)
 import Data.Map (Map, fromFoldable, insert, lookup)
 import Data.Map as Map
@@ -54,32 +53,36 @@ lefts array =
 
 conversionRates :: Array (Tuple3 Currency Currency Number)
 conversionRates =
-  fromFoldable
-    [ USD /\ MXN /\ 1.5
-    , USD /\ EUD /\ 2.5
-    , USD /\ THB /\ 3.5
-    , USD /\ GBP /\ 4.5
-    , MXN /\ EUD /\ 2.5
-    , MXN /\ THB /\ 3.5
-    , MXN /\ GBP /\ 4.5
-    , EUD /\ THB /\ 3.5
-    , EUD /\ GBP /\ 4.5
-    , THB /\ GBP /\ 4.5
+    [ USD /\ MXN /\ 1.5 /\ unit
+    , USD /\ EUD /\ 2.5 /\ unit 
+    , USD /\ THB /\ 3.5 /\ unit 
+    , USD /\ GBP /\ 4.5 /\ unit 
+    , MXN /\ EUD /\ 2.5 /\ unit 
+    , MXN /\ THB /\ 3.5 /\ unit 
+    , MXN /\ GBP /\ 4.5 /\ unit 
+    , EUD /\ THB /\ 3.5 /\ unit 
+    , EUD /\ GBP /\ 4.5 /\ unit 
+    , THB /\ GBP /\ 4.5 /\ unit 
     ]
 
-currencyConverter :: Array (Tuple3 Currency Currency Number) -> Map Currency (Map Currency Number)
-currencyConverter currencyMappings =
+currencyConversionLookup :: Map Currency (Map Currency Number)
+currencyConversionLookup = makeCurrencyConversionLookup conversionRates
+
+makeCurrencyConversionLookup :: Array (Tuple3 Currency Currency Number) -> Map Currency (Map Currency Number)
+makeCurrencyConversionLookup currencyMappings =
   let
-    currencies = nub <| map fst currencyMappings <> map snd currencyMappings
+    currencies :: Array Currency
+    currencies = nub <| map fst currencyMappings <> map (\(a /\ b /\ c) -> b) currencyMappings
+    
+    currencyLookup :: Map Currency (Map Currency Number)
     currencyLookup = foldl (\accumulator currency -> insert currency Map.empty accumulator) Map.empty currencies
+    
     insertRateAndInverse :: Map Currency (Map Currency Number) -> Tuple3 Currency Currency Number -> Maybe (Map Currency (Map Currency Number))
-    insertRateAndInverse currencyMap (from /\ to /\ rate) = do
-      
+    insertRateAndInverse currencyMap (from /\ to /\ rate /\ unit) = do  
       fromCurrencyMap <- lookup from currencyMap
       toCurrencyMap <- lookup to currencyMap
-      
-      let newFromMap = insert to rate fromCurrencyMap
-      let newToMap = insert from (1/rate) toCurrencyMap
+      let newFromMap = insert to rate fromCurrencyMap :: Map Currency Number
+      let newToMap = insert from (1.0/rate) toCurrencyMap
 
       insert from newFromMap currencyMap
         |> insert to newToMap 
@@ -154,11 +157,11 @@ type Money =
   , currency :: Currency
   }
 
-combineMoney :: Money -> Money -> Maybe Money
-combineMoney first second =
-  if first.currency == second.currency 
-  then Just <| first { amount = first.amount + second.amount }
-  else Nothing
+-- combineMoney :: Money -> Money -> Maybe Money
+-- combineMoney first second =
+--   if first.currency == second.currency 
+--   then Just <| first { amount = first.amount + second.amount }
+--   else Nothing
 
 convert :: Map Currency (Map Currency Number) -> Money -> Currency -> Maybe Money
 convert conversionRates money targetCurrency = do
@@ -289,12 +292,25 @@ parseTransaction text = do
 --     set accounts payment.accountNumber newAccount
 -- -- processTransactions accounts (Bill bill) =
 
--- processTransaction :: Dictionary AccountNumber Account -> AccountNumber -> Transaction -> Dictionary AccountNumber Account
--- processTransaction accounts accountNumber transaction = 
---   let
---     mapOperation = case transaction of
---       Bill bill -> (\account -> applyMoneyAmount { amount, currency account.balance bill.amount)
---       Payment payment -> (\account -> apply account.balance -payment.amount)
---     account = get accounts accountNumber
---     newAccount = map mapOperation account
---   in
+processTransaction :: Map AccountNumber Account -> AccountNumber -> Transaction -> Maybe (Map AccountNumber Account)
+processTransaction accounts accountNumber transaction = do
+    --get account from accounts
+    account <- lookup  accountNumber accounts
+    
+    --case to get the transaction currency out
+    let 
+      transactionAmount = 
+        case transaction of
+          Bill { amount } -> amount
+          Payment { amount } -> amount
+      transactionOperation = 
+        case transaction of
+          Bill { amount } -> (_ + amount.amount)
+          Payment { amount } -> (_ - amount.amount)
+    --get conversion rate
+    rate <- convert currencyConversionLookup transactionAmount account.balance.currency
+    --apply conversion rate to transaction
+
+    let updatedAccount = account { balance = account.balance { amount = transactionOperation account.balance.amount }}
+
+    pure <| insert accountNumber updatedAccount accounts
