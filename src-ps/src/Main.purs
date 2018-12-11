@@ -10,7 +10,7 @@ import Data.Int (fromString) as DataInt
 import Data.List.Lazy (elemLastIndex)
 import Data.Map (Map, fromFoldable, insert, lookup)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.Number (fromString) as DataNumber
 import Data.String (Pattern(..))
 import Data.String.Common (split)
@@ -95,7 +95,9 @@ makeCurrencyConversionLookup currencyMappings =
       currencyLookup 
       currencyMappings
 
-
+account = { accountNumber: "123", balance: { amount: 100.0, currency: USD}, name: "John Doe"}
+payment = Payment { accountNumber: "123", amount: { amount: 50.0, currency: USD}, source: "Online Payment"}
+bill = Bill { accountNumber: "123", amount: { amount: 50.0, currency: USD}, bucket: "Dues"}
 
 main :: Effect Unit
 main = do
@@ -118,9 +120,6 @@ main = do
   -- _ <- traverse (either log (show >>> log)) validAccounts.yes
   -- _ <- traverse (either log (show >>> log)) validAccounts.no
 
-  
-  
-
   let transactions = parseTransactions transactionsText
   let transactionErrors = lefts transactions
   let validTransactions = rights transactions
@@ -137,8 +136,9 @@ main = do
   -- log <| "Valid transactions: " <> show (length validTransactions.yes)
 
   -- let newAccounts = processTransactions validAccounts validTransactions
-  log "foo"
   -- map show newAccounts |> log
+  log "foo"
+  
   -- log (show { accountNumber: "12345", balance: { amount: 100.0, currency: USD}, name: "Joe Smith"})
 
 data Currency = USD | MXN | EUD | THB | GBP 
@@ -164,10 +164,13 @@ type Money =
 --   else Nothing
 
 convert :: Map Currency (Map Currency Number) -> Money -> Currency -> Maybe Money
-convert conversionRates money targetCurrency = do
-  currencySpecificConversionRates <- lookup money.currency conversionRates
-  conversionRate <- lookup targetCurrency currencySpecificConversionRates
-  Just <| { amount: money.amount * conversionRate, currency: targetCurrency }
+convert conversionRates money targetCurrency =
+  if money.currency == targetCurrency
+  then Just <| money
+  else do
+    currencySpecificConversionRates <- lookup money.currency conversionRates
+    conversionRate <- lookup targetCurrency currencySpecificConversionRates
+    Just <| { amount: money.amount * conversionRate, currency: targetCurrency }
 
 
 
@@ -282,20 +285,37 @@ parseTransaction text = do
     "Payment" -> pure <| Payment { accountNumber, amount, source: transDetails}
     _ -> Nothing
 
--- processTransactions :: Dictionary AccountNumber Account -> Array Transaction -> Dictionary AccountNumber Account
--- processTransactions accounts (Payment payment) =
+processTransactions :: Map AccountNumber Account -> Array Transaction -> Map AccountNumber Account
+processTransactions accounts transactions = do
+  
+  -- this results in 
+  foldl 
+    (\(errors /\ accounts) transaction -> 
+      let
+        case 
+          lookup transaction.accountNumber accounts 
+          >>= processTransaction currencyConversionLookup tranaction of
+          Just account -> (errors /\ insert account.accountNumber account accounts)
+          Nothing -> (errors <> ("Failed to process transaction: " <> show transaction) /\ accounts)
+    )
+    ([] /\ accounts)
+    transactions
+  
 --   let
+
+--     f acc transaction = transaction.accountNumber
 --     account = get accounts payment.accountNumber
 --     newAccount = map ? account
     
 --   in
+--     foldl f mempty transactions
 --     set accounts payment.accountNumber newAccount
--- -- processTransactions accounts (Bill bill) =
+-- processTransactions accounts (Bill bill) =
 
-processTransaction :: Map AccountNumber Account -> AccountNumber -> Transaction -> Maybe (Map AccountNumber Account)
-processTransaction accounts accountNumber transaction = do
+processTransaction :: Map Currency (Map Currency Number) -> Transaction -> Account -> Maybe Account
+processTransaction currencyConversionLookup transaction account = do
     --get account from accounts
-    account <- lookup  accountNumber accounts
+    -- account <- lookup  accountNumber accounts
     
     --case to get the transaction currency out
     let 
@@ -311,6 +331,6 @@ processTransaction accounts accountNumber transaction = do
     rate <- convert currencyConversionLookup transactionAmount account.balance.currency
     --apply conversion rate to transaction
 
-    let updatedAccount = account { balance = account.balance { amount = transactionOperation account.balance.amount }}
+    pure <| account { balance = account.balance { amount = transactionOperation account.balance.amount }}
 
-    pure <| insert accountNumber updatedAccount accounts
+    --pure <| insert accountNumber updatedAccount account
