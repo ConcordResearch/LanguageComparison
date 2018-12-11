@@ -15,7 +15,7 @@ import Data.Number (fromString) as DataNumber
 import Data.String (Pattern(..))
 import Data.String.Common (split)
 import Data.Traversable (traverse, sequence)
-import Data.Tuple (fst, snd)
+import Data.Tuple (Tuple(..), fst, snd)
 import Data.Tuple.Nested (Tuple3(..), (/\))
 import Effect (Effect)
 import Effect.Console (log)
@@ -49,7 +49,6 @@ lefts array =
       addValidElement
       [] 
       array
-
 
 conversionRates :: Array (Tuple3 Currency Currency Number)
 conversionRates =
@@ -97,7 +96,10 @@ makeCurrencyConversionLookup currencyMappings =
 
 account = { accountNumber: "123", balance: { amount: 100.0, currency: USD}, name: "John Doe"}
 payment = Payment { accountNumber: "123", amount: { amount: 50.0, currency: USD}, source: "Online Payment"}
-bill = Bill { accountNumber: "123", amount: { amount: 50.0, currency: USD}, bucket: "Dues"}
+bill = Bill { accountNumber: "123", amount: { amount: 25.0, currency: USD}, bucket: "Dues"}
+
+accountMap = createAccountLookup [account]
+transactionList = [payment, bill, payment]
 
 main :: Effect Unit
 main = do
@@ -285,52 +287,59 @@ parseTransaction text = do
     "Payment" -> pure <| Payment { accountNumber, amount, source: transDetails}
     _ -> Nothing
 
-processTransactions :: Map AccountNumber Account -> Array Transaction -> Map AccountNumber Account
-processTransactions accounts transactions = do
-  
-  -- this results in 
+createAccountLookup :: Array Account -> Map AccountNumber Account
+createAccountLookup accounts =
+  foldl (\acc acct -> insert acct.accountNumber acct acc) Map.empty accounts
+
+-- > processTransactions
+processTransactions :: Map AccountNumber Account -> Array Transaction -> Tuple (Array String) (Map AccountNumber Account)
+processTransactions accounts transactions =
+  let
+    getAccountNumber (Bill {accountNumber}) = accountNumber
+    getAccountNumber (Payment {accountNumber}) = accountNumber
+
+    applyTransaction :: Map AccountNumber Account -> Transaction -> Maybe Account
+    applyTransaction accts transaction = do
+      acct <- lookup (getAccountNumber transaction) accts
+      processTransaction currencyConversionLookup transaction acct
+
+    applyResult 
+      :: Array String 
+      -> Map AccountNumber Account 
+      -> Transaction 
+      -> Maybe Account 
+      -> Tuple (Array String) (Map AccountNumber Account)
+    applyResult errors accounts transaction (Just account) =
+      errors /\ insert account.accountNumber account accounts
+    applyResult errors accounts transaction Nothing =
+      errors `snoc` ("Failed to process transaction: " <> show transaction) /\ accounts
+
+    buildResult 
+      :: Tuple (Array String) (Map AccountNumber Account) 
+      -> Transaction 
+      -> Tuple (Array String) (Map AccountNumber Account)
+    buildResult (errors /\ accounts) transaction =
+      applyTransaction accounts transaction |>
+        applyResult errors accounts transaction
+
+  in 
   foldl 
-    (\(errors /\ accounts) transaction -> 
-      let
-        case 
-          lookup transaction.accountNumber accounts 
-          >>= processTransaction currencyConversionLookup tranaction of
-          Just account -> (errors /\ insert account.accountNumber account accounts)
-          Nothing -> (errors <> ("Failed to process transaction: " <> show transaction) /\ accounts)
-    )
+    buildResult
     ([] /\ accounts)
     transactions
-  
---   let
-
---     f acc transaction = transaction.accountNumber
---     account = get accounts payment.accountNumber
---     newAccount = map ? account
-    
---   in
---     foldl f mempty transactions
---     set accounts payment.accountNumber newAccount
--- processTransactions accounts (Bill bill) =
 
 processTransaction :: Map Currency (Map Currency Number) -> Transaction -> Account -> Maybe Account
 processTransaction currencyConversionLookup transaction account = do
-    --get account from accounts
-    -- account <- lookup  accountNumber accounts
-    
-    --case to get the transaction currency out
-    let 
-      transactionAmount = 
-        case transaction of
-          Bill { amount } -> amount
-          Payment { amount } -> amount
-      transactionOperation = 
-        case transaction of
-          Bill { amount } -> (_ + amount.amount)
-          Payment { amount } -> (_ - amount.amount)
-    --get conversion rate
-    rate <- convert currencyConversionLookup transactionAmount account.balance.currency
-    --apply conversion rate to transaction
+  let 
+    transactionAmount = 
+      case transaction of
+        Bill { amount } -> amount
+        Payment { amount } -> amount
+    transactionOperation = 
+      case transaction of
+        Bill { amount } -> (_ + amount.amount)
+        Payment { amount } -> (_ - amount.amount)
+  rate <- convert currencyConversionLookup transactionAmount account.balance.currency
+  pure <| account { balance = account.balance { amount = transactionOperation account.balance.amount }}
 
-    pure <| account { balance = account.balance { amount = transactionOperation account.balance.amount }}
 
-    --pure <| insert accountNumber updatedAccount account
