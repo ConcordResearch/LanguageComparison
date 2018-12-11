@@ -13,13 +13,13 @@ import Data.List.Types (List(..))
 -- import Data.List.Lazy (replicate, snoc)
 -- import Data.List.Lazy.Types (List(..), Step(..),  step, nil, cons, (:))
 -- import Data.List.Lazy.Types (List(..)) as LList
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
 import Data.Either (Either(..), either)
 import Data.Traversable (traverse, sequence, foldr)
 import Data.Foldable (foldMap, all, foldl)
 import Data.Unfoldable (replicateA)
 import Data.Validation.Semigroup (V, invalid)
-import Data.Map (Map(..), fromFoldable)
+import Data.Map (Map(..), fromFoldable, lookup, insert)
 import Data.Tuple.Nested ((/\))
 
 import Control.Applicative (pure)
@@ -266,19 +266,58 @@ type Header a =
   }
 
 --create a decoder
--- __ :: Map String _ -> Map String (Parser) -> Decoder a
--- __ headers validators =
+-- headerParsers
+--   :: forall a. Array String
+--   -> Map String (Parser a) 
+--   -> V (Array ParseError) (Array (Parser a))
+-- headerParsers headers validators =
 --   let 
---     f {name, position} = 
---     -- return 'Parser Set' which has more metadata like index, parser, column header
+--     -- f :: 
+--     f acc hdrName =
+--       lookup hdrName validators 
+--         >>= (\v -> insert v acc) 
+--         <*> handleError hdrName
+    
+--     handleError 
+--       :: forall a. String 
+--       -> Maybe (V (Array ParseError) (Array (Parser a))) 
+--       -> V (Array ParseError) (Array (Parser a))
+--     handleError hdrName m =
+--       maybe (error hdrName) identity m
+    
+--     error hdrName = invalid $ ParseError "Column name mapping not found: " <> hdrName  (Position {line: 0, column: 0})
+
 --   in
---     f <$> headers
+--     sequence $ foldl f [] headers
+
+
+strs = ["1234", "234 USD"]
+
+parsers = [string "", string "234 USD"]
+
+mm = zipWith (\a b -> parse a b) strs parsers
+
 
   -- map over the headers
   -- find validator out of headers
   -- append parser to list of parsers, can we attach more metadata?
 
+-- 1) take the header labels+indexes and a map that has ('HeaderLabel', ColumnParser) 
+-- which create a decoder (Validator Errors (List DecodedValues)) 
+-- 2)  a fxn that takes the list of column values and runs the decoder against it
 
+
+-- gregberns [10:49 PM]
+-- Parser question: If I need to parse a string “1234,234 USD” and have two parsers 
+-- `AccountNumber`, `Money`, how do I create build a type signature `Array (Parser a)`
+--    so that `a` can change type? The purpose is to create a mapping of parsers that 
+--    is dynamic (the order and composition of parsers can change based on a database 
+--    lookup) and can be run against a CSV file where the order of columns (things to 
+--    be parsed) may change. Any thoughts on where to even start?
+-- Another way to put it: 
+
+
+-- Question on parsers. How can a set of parsers be formed so that `["1234", "234 USD"]` and `[Parser AccountNumber, Parser Money]` can be zipped together, assuming the list of parsers are unknown at compile time. Is this possible since the output types in the parser array dont match? Is there another data structure I can use? 
 
 
 
