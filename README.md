@@ -7,5 +7,7 @@ Understand the performance differences between several languages, and illustrate
 Languages being compared:
 
 * C# (as a baseline)
+
 * PureScript (Node)
+
 * Haskell
