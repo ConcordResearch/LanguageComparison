@@ -9,6 +9,7 @@
     "foldable-traversable",
     "integers",
     "node-fs",
+    "now",
     "numbers",
     "ordered-collections",
     "prelude",

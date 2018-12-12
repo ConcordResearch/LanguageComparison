@@ -2,11 +2,14 @@ module Main where
 
 import Prelude
 
-import Data.Array (index, partition, length, snoc, filter, nub, take, cons, fromFoldable, singleton)
+import Control.Monad.ST.Internal (ST, foreach)
+import Data.Array (index, partition, length, snoc, filter, nub, take, cons, fromFoldable, singleton, mapMaybe)
+import Data.Array.ST (empty, push, freeze, unsafeFreeze)
 import Data.Either (Either(..), either, isRight, isLeft, hush)
 import Data.Foldable (foldl, foldr)
 import Data.Function (apply, applyFlipped)
 import Data.Int (fromString) as DataInt
+-- import Data.Interval (DurationComponent(..))
 import Data.List.Lazy (elemLastIndex)
 import Data.Map (Map, insert, lookup, values)
 import Data.Map as Map
@@ -14,75 +17,51 @@ import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.Number (fromString) as DataNumber
 import Data.String (Pattern(..))
 import Data.String.Common (split)
+import Data.Time (Millisecond, Second, diff)
+import Data.Time.Duration (class Duration, Milliseconds, fromDuration)
 import Data.Traversable (traverse, sequence)
 import Data.Tuple (Tuple(..), fst, snd)
 import Data.Tuple.Nested (Tuple3(..), (/\))
 import Effect (Effect, foreachE)
 import Effect.Console (log)
 import Effect.Exception (throwException)
+import Effect.Now (nowTime)
 import Node.Encoding (Encoding(..))
 import Node.FS.Sync (readTextFile)
 
---ewwww
-import Data.Array.ST (empty, push, freeze, unsafeFreeze)
-import Control.Monad.ST.Internal (ST, foreach)
+foreign import now :: Effect Number
 
 infixr 0 apply as <|
 infixl 0 applyFlipped as |>
 
-rights :: forall a b. Array (Either a b) -> Array b
-rights array =
-  let
-    f (Left _) accumulator = accumulator
-    -- Both `snoc` and `<>` perform very poorly
-    -- maybe look at https://pursuit.purescript.org/packages/purescript-rrb-list/0.0.1
-    f (Right value) accumulator = snoc accumulator value
-    -- f (Right value) accumulator = accumulator <> singleton value
-  in
-    foldr f [] array
-
-
---Rights with a mutable array
 -- rights :: forall a b. Array (Either a b) -> Array b
--- rights array = do
-  
---   -- empty :: forall a. f a
---   arr <- empty -- :: ST h (STArray h a)
-  
---   -- foreach :: forall r a. Array a -> (a -> ST r Unit) -> ST r Unit
---   a <- foreach array 
-  
---   -- push :: forall h a. a -> STArray h a -> ST h Int
---   -- _ <- push a arr
+-- rights array =
+--   let
+--     f (Left _) accumulator = accumulator
+--     -- Both `snoc` and `<>` perform very poorly
+--     -- maybe look at https://pursuit.purescript.org/packages/purescript-rrb-list/0.0.1
+--     f (Right value) accumulator = snoc accumulator value
+--     -- f (Right value) accumulator = accumulator <> singleton value
+--   in
+--     foldr f [] array
 
---   newarr <- freeze arr
 
---   pure newarr
+-- import Data.Array (snoc)
+-- import Data.Either (Either(..))
 
---Haskell Example
---   import Control.Monad.ST
---  import Data.Array.ST
- 
---  buildPair = do arr <- newArray (1,10) 37 :: ST s (STArray s Int Int)
---                 a <- readArray arr 1
---                 writeArray arr 1 64
---                 b <- readArray arr 1
---                 return (a,b)
- 
---  main = print $ runST buildPair
-  
+-- rights :: forall a b. Array (Either a b) -> Array b
+-- rights array =
+--   let
+--     f (Left _) accumulator = accumulator
+--     f (Right value) accumulator = snoc accumulator value
+--   in
+--     foldr f [] array
+
+rights :: forall a b. Array (Either a b) -> Array b
+rights array = mapMaybe hush array
 
 lefts :: forall a b. Array (Either a b) -> Array a
-lefts array = 
-  let
-    addValidElement :: forall a b. Array a -> Either a b -> Array a
-    addValidElement accumulator (Left value) = snoc accumulator value
-    addValidElement accumulator (Right _) = accumulator 
-  in
-    foldl 
-      addValidElement
-      [] 
-      array
+lefts array = mapMaybe (either Just (const Nothing)) array
 
 conversionRates :: Array (Tuple3 Currency Currency Number)
 conversionRates =
@@ -141,35 +120,60 @@ transactionList = [payment, bill, payment]
 
 main :: Effect Unit
 main = do
-  
-  accountsText <- readTextFile UTF8 "accounts-200k.txt"
-  log "Read Accounts Complete"
-  transactionsText <- readTextFile UTF8 "transactions-1m.txt"  
-  log "Read Transactions Complete"
+
+  -- import Data.Time.Duration (class Duration, Milliseconds(..), fromDuration)
+
+
+  -- log $ diff 
+  tt0 <- now
+  accountsText <- readTextFile UTF8 "accounts-1m.txt"
+  tt1 <- now
+  log <| "Read Accounts Complete " <> (show <| tt1 - tt0)
+  transactionsText <- readTextFile UTF8 "transactions-1m.txt"
+  tt2 <- now
+  log <| "Read Transactions Complete " <> (show <| tt2 - tt1)
 
   let accounts = parseAccounts accountsText
-  log "Parse Accounts complete"
+  tt3 <- now
+  log <| "Parse Accounts complete " <> (show <| tt3 - tt2)
   
-  -- This is REALLY slow cause of `snoc` in rights/lefts
-  let accountErrors = lefts accounts
+  -- This was REALLY slow cause of `snoc` in the rights/lefts
+  -- let accountErrors = lefts accounts
   let validAccounts = rights accounts
-  log "Accounts Right Complete"
+  tt4 <- now
+  log <| "Accounts Right Complete " <> (show <| tt4 - tt3)
   
   let accountLookup = createAccountLookup validAccounts
-  log "Create Account Lookup complete"
+  tt5 <- now
+  log <| "Create Account Lookup complete " <> (show <| tt5 - tt4)
   
   let transactions = parseTransactions transactionsText
-  let transactionErrors = lefts transactions
+  -- let transactionErrors = lefts transactions
   let validTransactions = rights transactions
-  log "Parse Transaction complete"
+  tt6 <- now
+  log <| "Parse Transaction Complete " <> (show <| tt6 - tt5)
   
   let (errors /\ accountMap) = processTransactions accountLookup validTransactions
+  tt7 <- now
+  log <| "Process Transactions Complete " <> (show <| tt7 - tt6)
+
+  --the use of `traverse` was very slow. using foreachE solves it
   --_ <- traverse ( show >>> log ) (values accountMap)  
   foreachE (fromFoldable $ values accountMap) ( show >>> log )
-  -- log ""
+  
+  tt8 <- now
+  
+  
+  
+  log <| "Read Accounts Complete " <> (show <| tt1 - tt0)
+  log <| "Read Transactions Complete " <> (show <| tt2 - tt1)
+  log <| "Parse Accounts complete " <> (show <| tt3 - tt2)
+  log <| "Accounts Right Complete " <> (show <| tt4 - tt3)
+  log <| "Create Account Lookup complete " <> (show <| tt5 - tt4)
+  log <| "Parse Transaction Complete " <> (show <| tt6 - tt5)
+  log <| "Process Transactions Complete " <> (show <| tt7 - tt6)
+  log <| "Complete " <> (show <| tt8 - tt7)
   pure unit
-
-  -- log (show { accountNumber: "12345", balance: { amount: 100.0, currency: USD}, name: "Joe Smith"})
 
 data Currency = USD | MXN | EUD | THB | GBP 
 instance showCurrency :: Show Currency where

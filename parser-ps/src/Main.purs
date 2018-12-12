@@ -1,70 +1,44 @@
 module Main where
 
 import Prelude
-import Effect (Effect)
-import Effect.Console (log)
-
-import Data.String (Pattern(..),  contains, drop, indexOf, length, take)
-import Data.String.CodeUnits (fromCharArray, toCharArray, singleton)
-import Data.Int (toNumber)
-import Data.Array (toUnfoldable, some, zipWith)
-import Data.List ((:), many)
-import Data.List.Types (List(..))
--- import Data.List.Lazy (replicate, snoc)
--- import Data.List.Lazy.Types (List(..), Step(..),  step, nil, cons, (:))
--- import Data.List.Lazy.Types (List(..)) as LList
-import Data.Maybe (Maybe(..), maybe)
-import Data.Either (Either(..), either)
-import Data.Traversable (traverse, sequence, foldr)
-import Data.Foldable (foldMap, all, foldl)
-import Data.Unfoldable (replicateA)
-import Data.Validation.Semigroup (V, invalid)
-import Data.Map (Map(..), fromFoldable, lookup, insert)
-import Data.Tuple.Nested ((/\))
 
 import Control.Applicative (pure)
 import Control.Plus ((<|>))
-
+import Data.Array (toUnfoldable, some, zipWith, snoc)
+import Data.Either (Either(..), either)
+import Data.Foldable (foldMap, all, foldl)
+import Data.Int (toNumber)
+import Data.List ((:), many)
+import Data.List.Types (List(..))
+import Data.Map (Map(..), fromFoldable, lookup, insert)
+import Data.Maybe (Maybe(..), maybe)
+import Data.String (Pattern(..), contains, drop, indexOf, length, take)
+import Data.String.CodeUnits (fromCharArray, toCharArray, singleton)
+import Data.Traversable (traverse, sequence, foldr)
+import Data.Tuple.Nested ((/\))
+import Data.Unfoldable (replicateA)
+import Data.Validation.Semigroup (V, invalid)
+import Effect (Effect)
+import Effect.Console (log)
+import Text.Parsing.CSV (defaultParsers, makeParsers)
 import Text.Parsing.Parser (Parser(..), ParseError(..), runParser, ParserT)
-import Text.Parsing.Parser.Language (javaStyle, haskellStyle, haskellDef)
-import Text.Parsing.Parser.Token (TokenParser, makeTokenParser, digit, letter, upper)
-import Text.Parsing.Parser.String (string, eof, satisfy)
 import Text.Parsing.Parser.Combinators (sepBy, sepBy1, sepEndBy, sepEndBy1, manyTill, endBy)
+import Text.Parsing.Parser.Language (javaStyle, haskellStyle, haskellDef)
 import Text.Parsing.Parser.Pos (Position(..))
-
-import Text.Parsing.CSV ( defaultParsers, makeParsers) --, Parsers, P, makeQuoted, makeChars, makeQchars, makeField, makeFile, , makeFileHeaded)
+import Text.Parsing.Parser.String (string, eof, satisfy)
+import Text.Parsing.Parser.Token (TokenParser, makeTokenParser, digit, letter, upper)
 
 main :: Effect Unit
 main = do
   log "Hello sailor!"
 
-
 -- https://github.com/nwolverson/purescript-csv/blob/master/src/Text/Parsing/CSV.purs#L63
 
+type P a = Parser String a
 
-count :: forall s m a. Monad m => Int -> ParserT s m a -> ParserT s m (List a)
-count = replicateA
--- count n p = 
---   if n <= 0 
---   then pure nil
---   else sequence (replicate n p)
-
-
-isTrue exp = either (\_-> false) ((==) (exp :: List (List String)))
-
--- testFile = "a,,c,\n,1,2,3\n\"x\",\"field,quoted\",z\n" :: String
--- testResult = toUnfoldable $ toUnfoldable <$> [["a", "", "c", ""], ["", "1", "2", "3"], ["x", "field,quoted", "z"], [""]]
-
-testFile = "col1,col2,col3\n123456,234 USD,Joe Smith\n234567,345 MXN,Doe Simth\n345678,456 THB,Phil Mac" :: String
--- testResult = toUnfoldable $ toUnfoldable <$> [["a", "", "c", ""], ["", "1", "2", "3"], ["x", "field,quoted", "z"], [""]]
-
--- toString :: List Char -> String
--- toString cs = foldr (flip snoc) "" cs
-
-charList = ('a' : 'b' : 'c' : 'd' : Nil)
-
-fromCharList :: List Char -> String
-fromCharList = foldr (\c a -> singleton c <> a) ""
+data ParserType
+  = ParseMoney (P Money)
+  | ParseString (P String)
 
 p :: TokenParser
 p = makeTokenParser haskellDef
@@ -81,6 +55,21 @@ parseCurrency = (<$>) fromCharList (count 3 (letter <|> upper))
 --doesnt handle negatives and decimals properly
 parseAmount :: P Number
 parseAmount = (toNumber <$> p.integer) <|> p.float
+
+count :: forall s m a. Monad m => Int -> ParserT s m a -> ParserT s m (List a)
+count = replicateA
+
+isTrue exp = either (\_-> false) ((==) (exp :: List (List String)))
+
+-- testFile = "a,,c,\n,1,2,3\n\"x\",\"field,quoted\",z\n" :: String
+-- testResult = toUnfoldable $ toUnfoldable <$> [["a", "", "c", ""], ["", "1", "2", "3"], ["x", "field,quoted", "z"], [""]]
+testFile = "col1,col2,col3\n123456,234 USD,Joe Smith\n234567,345 MXN,Doe Simth\n345678,456 THB,Phil Mac" :: String
+-- testResult = toUnfoldable $ toUnfoldable <$> [["a", "", "c", ""], ["", "1", "2", "3"], ["x", "field,quoted", "z"], [""]]
+
+charList = ('a' : 'b' : 'c' : 'd' : Nil)
+
+fromCharList :: List Char -> String
+fromCharList = foldr (\c a -> singleton c <> a) ""
 
 data Currency = USD | MXN | EUD | THB | GBP 
 instance showCurrency :: Show Currency where
@@ -102,6 +91,8 @@ type Account =
   , balance :: Money
   -- , name :: String
   }
+
+  
 
 -- > parse "100 USD" parseMoney
 -- (Right { amount: 100.0, currency: "USD" })
@@ -140,7 +131,7 @@ testRow = "1234,234 USD\n2345,345 USD"
 
 
 
-type P a = Parser String a
+
 
 -- type Parsers a =
 --   {
@@ -266,29 +257,36 @@ type Header a =
   }
 
 --create a decoder
--- headerParsers
---   :: forall a. Array String
---   -> Map String (Parser a) 
---   -> V (Array ParseError) (Array (Parser a))
--- headerParsers headers validators =
---   let 
---     -- f :: 
---     f acc hdrName =
---       lookup hdrName validators 
---         >>= (\v -> insert v acc) 
---         <*> handleError hdrName
-    
---     handleError 
---       :: forall a. String 
---       -> Maybe (V (Array ParseError) (Array (Parser a))) 
---       -> V (Array ParseError) (Array (Parser a))
---     handleError hdrName m =
---       maybe (error hdrName) identity m
-    
---     error hdrName = invalid $ ParseError "Column name mapping not found: " <> hdrName  (Position {line: 0, column: 0})
+headerParsers
+  :: forall a. Array String
+  -> Map String ParserType
+  -> V (Array ParseError) (Array ParserType)
+headerParsers headers validators =
+  let
 
---   in
---     sequence $ foldl f [] headers
+    lookupParser :: String -> Maybe ParserType
+    lookupParser hdrName = lookup hdrName validators
+
+    -- insert' :: Array ParserType -> ParserType -> Array ParserType
+    -- insert' acc v = acc `snoc` v
+
+    h :: V (Array ParseError) (Array ParserType) -> String -> V (Array ParseError) (Array ParserType) 
+    h acc hdrName = 
+      handleError hdrName $ lookupParser hdrName >>= (\v -> ((<>) acc)  <$> v)
+
+    handleError 
+      :: forall a. 
+         String 
+      -> Maybe (V (Array ParseError) (Array ParserType))
+      -> V (Array ParseError) (Array ParserType)
+    handleError hdrName m =
+      maybe (error hdrName) identity m
+    
+    error :: String -> V (Array ParseError) (Array ParserType)
+    error hdrName = invalid $ pure $ ParseError ("Expected column name: " <> hdrName)  (Position {line: 0, column: 0})
+
+  in
+    foldl h mempty headers
 
 
 strs = ["1234", "234 USD"]
