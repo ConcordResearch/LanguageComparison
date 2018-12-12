@@ -8,7 +8,7 @@ import Data.Foldable (foldl)
 import Data.Function (apply, applyFlipped)
 import Data.Int (fromString) as DataInt
 import Data.List.Lazy (elemLastIndex)
-import Data.Map (Map, fromFoldable, insert, lookup)
+import Data.Map (Map, fromFoldable, insert, lookup, values)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.Number (fromString) as DataNumber
@@ -101,46 +101,47 @@ bill = Bill { accountNumber: "123", amount: { amount: 25.0, currency: USD}, buck
 accountMap = createAccountLookup [account]
 transactionList = [payment, bill, payment]
 
+
+--  To run:
+--    $ node -e "require('./output/Main').main()"
+
 main :: Effect Unit
 main = do
-  -- bind :: (Monad m) => m a -> (a -> m b) -> m b
-  -- readTextFile :: String -> Effect String
-  -- log :: String -> Effect ()
-  -- readTextFile UTF8 "accounts.txt" `bind` log
 
-  accountsText <- readTextFile UTF8 "accounts.txt"
+  -- accountsText <- readTextFile UTF8 "accounts-1m.txt"
+  -- log "Read Accounts Complete"
+  -- log "start split lines"
+  -- let splitLines = split (Pattern "\n") accountsText
+  -- log "split lines complete"
+  -- let maybeAccounts = map parseAccount splitLines
+  -- log ("map complete: " <> (show $ length maybeAccounts))
+  -- -- Theres something wrong with traverse over a large dataset
+  --_ <- traverse ( show >>> log ) (maybeAccounts)  
+
+  ---
+  accountsText <- readTextFile UTF8 "accounts-1m.txt"
+  log "Read Accounts Complete"
   transactionsText <- readTextFile UTF8 "transactions.txt"  
-  
+  log "Read Transactions Complete"
+
   let accounts = parseAccounts accountsText
+
   let accountErrors = lefts accounts
   let validAccounts = rights accounts
+  log "Parse Accounts complete"
+  let accountLookup = createAccountLookup validAccounts
+  log "Create Account Lookup complete"
   
-  --Array (Either String Account) ->  () -> Effect ()
-  -- Array (Effect ())
-  --traverse :: forall a b m. Applicative m => (a -> m b) -> t a -> m (t b)
-
-  -- _ <- traverse (either log (show >>> log)) validAccounts.yes
-  -- _ <- traverse (either log (show >>> log)) validAccounts.no
-
   let transactions = parseTransactions transactionsText
   let transactionErrors = lefts transactions
   let validTransactions = rights transactions
+  log "Parse Transaction complete"
   
-  -- t (m a) -> m (t a)
-  -- Array (Either String Transaction) -> Either String (Array Transaction)
-  -- sequence validTransactions.yes
-  -- _ <- traverse (either log (show >>> log)) validTransactions.yes
-  -- _ <- traverse (either log (show >>> log)) validTransactions.no
-  
-  
+  let (errors /\ accountMap) = processTransactions accountLookup validTransactions
+  --_ <- traverse ( show >>> log ) (values accountMap)  
+  -- log ""
+  pure unit
 
-  -- log <| "Valid accounts: " <> show (length validAccounts.yes)
-  -- log <| "Valid transactions: " <> show (length validTransactions.yes)
-
-  -- let newAccounts = processTransactions validAccounts validTransactions
-  -- map show newAccounts |> log
-  log "foo"
-  
   -- log (show { accountNumber: "12345", balance: { amount: 100.0, currency: USD}, name: "Joe Smith"})
 
 data Currency = USD | MXN | EUD | THB | GBP 
@@ -153,17 +154,10 @@ instance showCurrency :: Show Currency where
 derive instance eqCurrency :: Eq Currency
 derive instance ordCurrency :: Ord Currency
 
-
 type Money = 
   { amount :: Number
   , currency :: Currency
   }
-
--- combineMoney :: Money -> Money -> Maybe Money
--- combineMoney first second =
---   if first.currency == second.currency 
---   then Just <| first { amount = first.amount + second.amount }
---   else Nothing
 
 convert :: Map Currency (Map Currency Number) -> Money -> Currency -> Maybe Money
 convert conversionRates money targetCurrency =
@@ -173,9 +167,6 @@ convert conversionRates money targetCurrency =
     currencySpecificConversionRates <- lookup money.currency conversionRates
     conversionRate <- lookup targetCurrency currencySpecificConversionRates
     Just <| { amount: money.amount * conversionRate, currency: targetCurrency }
-
-
-
 
 type AccountNumber = String
 
