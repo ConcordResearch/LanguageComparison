@@ -52,3 +52,38 @@ main = do
   -- foreachE stringedAccts log
 
   pure unit
+
+
+
+
+
+-- Example of the ST monad to push values into an array.
+
+-- Rights complete 481.0
+-- Rights1 complete 1605.0
+--Rights with a mutable array
+-- rights1 :: forall a b. Array (Either a b) -> Array b
+-- rights1 array = 
+--   let 
+--     inner :: forall c. ST c (Array b)
+--     inner = do
+--       -- Go create a new empty array
+--       -- empty :: forall a. f a
+--       arr <- empty
+      
+--       let 
+--         insertIfValid e =
+--           case e of
+--             -- push :: forall h a. a -> STArray h a -> ST h Int
+--             Right v -> push v arr *> pure unit
+--             _ -> pure unit
+
+--       -- foreach :: forall r a. Array a -> (a -> ST r Unit) -> ST r Unit
+--       -- ST.foreach xs f runs the computation returned by the function f for each of the inputs xs.
+--       _ <- foreach array insertIfValid --(\a -> push a arr *> pure unit )
+      
+--       freeze arr
+--       -- newarr <- freeze arr
+--       -- pure newarr
+--   in
+--     run inner

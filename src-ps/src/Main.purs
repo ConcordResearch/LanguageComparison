@@ -3,13 +3,13 @@ module Main where
 import Prelude
 
 import Control.Monad.ST.Internal (ST, foreach)
+import Control.Monad.ST.Internal (ST, foreach, run)
 import Data.Array (index, partition, length, snoc, filter, nub, take, cons, fromFoldable, singleton, mapMaybe)
 import Data.Array.ST (empty, push, freeze, unsafeFreeze)
 import Data.Either (Either(..), either, isRight, isLeft, hush)
 import Data.Foldable (foldl, foldr)
 import Data.Function (apply, applyFlipped)
 import Data.Int (fromString) as DataInt
--- import Data.Interval (DurationComponent(..))
 import Data.List.Lazy (elemLastIndex)
 import Data.Map (Map, insert, lookup, values)
 import Data.Map as Map
@@ -29,33 +29,72 @@ import Effect.Now (nowTime)
 import Node.Encoding (Encoding(..))
 import Node.FS.Sync (readTextFile)
 
+import Foreign.Object.ST (STObject, new, poke)
+
 foreign import now :: Effect Number
 
 infixr 0 apply as <|
 infixl 0 applyFlipped as |>
 
--- rights :: forall a b. Array (Either a b) -> Array b
--- rights array =
---   let
---     f (Left _) accumulator = accumulator
---     -- Both `snoc` and `<>` perform very poorly
---     -- maybe look at https://pursuit.purescript.org/packages/purescript-rrb-list/0.0.1
---     f (Right value) accumulator = snoc accumulator value
---     -- f (Right value) accumulator = accumulator <> singleton value
+
+
+
+-- Rights complete 481.0
+-- Rights1 complete 1605.0
+--Rights with a mutable array
+rights1 :: forall a b. Array (Either a b) -> Array b
+rights1 array = 
+  let 
+    inner :: forall c. ST c (Array b)
+    inner = do
+      -- Go create a new empty array
+      -- empty :: forall a. f a
+      arr <- empty
+      
+      let 
+        insertIfValid e =
+          case e of
+            -- push :: forall h a. a -> STArray h a -> ST h Int
+            Right v -> push v arr *> pure unit
+            _ -> pure unit
+
+      -- foreach :: forall r a. Array a -> (a -> ST r Unit) -> ST r Unit
+      -- ST.foreach xs f runs the computation returned by the function f for each of the inputs xs.
+      _ <- foreach array insertIfValid --(\a -> push a arr *> pure unit )
+      
+      freeze arr
+  in
+    run inner
+
+
+
+
+-- createAccountLookup1 :: Array Account -> Map AccountNumber Account
+-- createAccountLookup1 accounts =
+--   -- foldl (\acc acct -> insert acct.accountNumber acct acc) Map.empty accounts
+--   let 
+--     inner :: forall b c. ST c (STObject c b)
+--     inner = do
+--       -- Go create a new empty array
+--       -- empty :: forall a. f a
+      
+--       map' <- new -- :: Map { accountNumber :: String , balance :: { amount :: Number, currency :: Currency}, name :: String}
+      
+--       -- poke :: forall a r. String -> a -> STObject r a -> ST r (STObject r a)
+--       -- Update the value for a key in a mutable object
+--       _ <- foreach accounts (\acct -> poke acct.accountNumber acct map' *> pure unit )
+      
+--       pure map'
 --   in
---     foldr f [] array
+--     run inner
 
 
--- import Data.Array (snoc)
--- import Data.Either (Either(..))
 
--- rights :: forall a b. Array (Either a b) -> Array b
--- rights array =
---   let
---     f (Left _) accumulator = accumulator
---     f (Right value) accumulator = snoc accumulator value
---   in
---     foldr f [] array
+
+
+
+
+
 
 rights :: forall a b. Array (Either a b) -> Array b
 rights array = mapMaybe hush array
@@ -115,11 +154,40 @@ accountMap = createAccountLookup [account]
 transactionList = [payment, bill, payment]
 
 
+main :: Effect Unit
+main = do  
+  
+  tt0 <- now
+  accountsText <- readTextFile UTF8 "accounts-1m.txt"
+  tt1 <- now
+  log <| "Read Accounts Complete " <> (show <| tt1 - tt0)
+  
+  let accounts = parseAccounts accountsText
+  tt2 <- now
+  log <| "Parse Accounts complete " <> (show <| tt2 - tt1)
+  
+  -- This was REALLY slow cause of `snoc` in the rights/lefts
+  -- let accountErrors = lefts accounts
+ 
+  let validAccounts = rights accounts
+  log <| "ValidAccounts " <> show (length validAccounts)
+
+  tt3 <- now
+  log <| "Rights complete " <> (show <| tt3 - tt2)
+
+  let validAccounts1 = rights1 accounts
+  log <| "ValidAccounts1 " <> show (length validAccounts1)
+
+  tt4 <- now
+  log <| "Rights1 complete " <> (show <| tt4 - tt3)
+
+  
+
 --  To run:
 --    $ node -e "require('./output/Main').main()"
 
-main :: Effect Unit
-main = do
+main1 :: Effect Unit
+main1 = do
 
   -- import Data.Time.Duration (class Duration, Milliseconds(..), fromDuration)
 
