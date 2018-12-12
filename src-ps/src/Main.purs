@@ -2,13 +2,13 @@ module Main where
 
 import Prelude
 
-import Data.Array (index, partition, length, snoc, filter, nub)
-import Data.Either (Either(..), either, isRight, isLeft)
-import Data.Foldable (foldl)
+import Data.Array (index, partition, length, snoc, filter, nub, take, cons, fromFoldable, singleton)
+import Data.Either (Either(..), either, isRight, isLeft, hush)
+import Data.Foldable (foldl, foldr)
 import Data.Function (apply, applyFlipped)
 import Data.Int (fromString) as DataInt
 import Data.List.Lazy (elemLastIndex)
-import Data.Map (Map, fromFoldable, insert, lookup, values)
+import Data.Map (Map, insert, lookup, values)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.Number (fromString) as DataNumber
@@ -17,26 +17,60 @@ import Data.String.Common (split)
 import Data.Traversable (traverse, sequence)
 import Data.Tuple (Tuple(..), fst, snd)
 import Data.Tuple.Nested (Tuple3(..), (/\))
-import Effect (Effect)
+import Effect (Effect, foreachE)
 import Effect.Console (log)
 import Effect.Exception (throwException)
 import Node.Encoding (Encoding(..))
 import Node.FS.Sync (readTextFile)
 
+--ewwww
+import Data.Array.ST (empty, push, freeze, unsafeFreeze)
+import Control.Monad.ST.Internal (ST, foreach)
+
 infixr 0 apply as <|
 infixl 0 applyFlipped as |>
 
 rights :: forall a b. Array (Either a b) -> Array b
-rights array = 
+rights array =
   let
-    addValidElement :: forall a b. Array b -> Either a b -> Array b
-    addValidElement accumulator (Left _) = accumulator
-    addValidElement accumulator (Right value) = snoc accumulator value
+    f (Left _) accumulator = accumulator
+    -- Both `snoc` and `<>` perform very poorly
+    -- maybe look at https://pursuit.purescript.org/packages/purescript-rrb-list/0.0.1
+    f (Right value) accumulator = snoc accumulator value
+    -- f (Right value) accumulator = accumulator <> singleton value
   in
-    foldl 
-      addValidElement
-      []
-      array
+    foldr f [] array
+
+
+--Rights with a mutable array
+-- rights :: forall a b. Array (Either a b) -> Array b
+-- rights array = do
+  
+--   -- empty :: forall a. f a
+--   arr <- empty -- :: ST h (STArray h a)
+  
+--   -- foreach :: forall r a. Array a -> (a -> ST r Unit) -> ST r Unit
+--   a <- foreach array 
+  
+--   -- push :: forall h a. a -> STArray h a -> ST h Int
+--   -- _ <- push a arr
+
+--   newarr <- freeze arr
+
+--   pure newarr
+
+--Haskell Example
+--   import Control.Monad.ST
+--  import Data.Array.ST
+ 
+--  buildPair = do arr <- newArray (1,10) 37 :: ST s (STArray s Int Int)
+--                 a <- readArray arr 1
+--                 writeArray arr 1 64
+--                 b <- readArray arr 1
+--                 return (a,b)
+ 
+--  main = print $ runST buildPair
+  
 
 lefts :: forall a b. Array (Either a b) -> Array a
 lefts array = 
@@ -107,28 +141,20 @@ transactionList = [payment, bill, payment]
 
 main :: Effect Unit
 main = do
-
-  -- accountsText <- readTextFile UTF8 "accounts-1m.txt"
-  -- log "Read Accounts Complete"
-  -- log "start split lines"
-  -- let splitLines = split (Pattern "\n") accountsText
-  -- log "split lines complete"
-  -- let maybeAccounts = map parseAccount splitLines
-  -- log ("map complete: " <> (show $ length maybeAccounts))
-  -- -- Theres something wrong with traverse over a large dataset
-  --_ <- traverse ( show >>> log ) (maybeAccounts)  
-
-  ---
-  accountsText <- readTextFile UTF8 "accounts-1m.txt"
+  
+  accountsText <- readTextFile UTF8 "accounts-200k.txt"
   log "Read Accounts Complete"
-  transactionsText <- readTextFile UTF8 "transactions.txt"  
+  transactionsText <- readTextFile UTF8 "transactions-1m.txt"  
   log "Read Transactions Complete"
 
   let accounts = parseAccounts accountsText
-
+  log "Parse Accounts complete"
+  
+  -- This is REALLY slow cause of `snoc` in rights/lefts
   let accountErrors = lefts accounts
   let validAccounts = rights accounts
-  log "Parse Accounts complete"
+  log "Accounts Right Complete"
+  
   let accountLookup = createAccountLookup validAccounts
   log "Create Account Lookup complete"
   
@@ -139,6 +165,7 @@ main = do
   
   let (errors /\ accountMap) = processTransactions accountLookup validTransactions
   --_ <- traverse ( show >>> log ) (values accountMap)  
+  foreachE (fromFoldable $ values accountMap) ( show >>> log )
   -- log ""
   pure unit
 
