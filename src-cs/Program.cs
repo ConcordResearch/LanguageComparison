@@ -6,87 +6,51 @@ namespace CSharpPerfEval
 {
     class Program
     {
-        static void Main(string[] args)
-        {
-            //USD,
-            //MXN,
-            //EUD,
-            //THB,
-            //GBP
-            var testExchangeData = new List<ExchangeRate>()
-            {
-                new ExchangeRate(Currency.USD, Currency.MXN, 1.5),
-                new ExchangeRate(Currency.USD, Currency.EUD, 2.5),
-                new ExchangeRate(Currency.USD, Currency.THB, 3.5),
-                new ExchangeRate(Currency.USD, Currency.GBP, 4.5),
+        // static void Main(string[] args)
+        // {
+        //     var testExchangeData = new List<ExchangeRate>()
+        //     {
+        //         new ExchangeRate(Currency.USD, Currency.MXN, 1.5),
+        //         new ExchangeRate(Currency.USD, Currency.EUD, 2.5),
+        //         new ExchangeRate(Currency.USD, Currency.THB, 3.5),
+        //         new ExchangeRate(Currency.USD, Currency.GBP, 4.5),
 
                 
-                new ExchangeRate(Currency.MXN, Currency.EUD, 2.5),
-                new ExchangeRate(Currency.MXN, Currency.THB, 3.5),
-                new ExchangeRate(Currency.MXN, Currency.GBP, 4.5),
+        //         new ExchangeRate(Currency.MXN, Currency.EUD, 2.5),
+        //         new ExchangeRate(Currency.MXN, Currency.THB, 3.5),
+        //         new ExchangeRate(Currency.MXN, Currency.GBP, 4.5),
 
-                new ExchangeRate(Currency.EUD, Currency.THB, 3.5),
-                new ExchangeRate(Currency.EUD, Currency.GBP, 4.5),
+        //         new ExchangeRate(Currency.EUD, Currency.THB, 3.5),
+        //         new ExchangeRate(Currency.EUD, Currency.GBP, 4.5),
 
-                new ExchangeRate(Currency.THB, Currency.GBP, 4.5)
+        //         new ExchangeRate(Currency.THB, Currency.GBP, 4.5)
 
-            };
+        //     };
 
-            var converter = new CurrencyConverter(testExchangeData);
+        //     var converter = new CurrencyConverter(testExchangeData);
 
-            var reader = new FileReader();
+        //     var reader = new FileReader();
 
-            var accounts = new AccountParser().ParseFile(reader.ReadFile("./accounts.txt"));
-            var transactions = new TransactionParser().ParseFile(reader.ReadFile("./transactions.txt"));
+        //     var accounts = new AccountParser().ParseFile(reader.ReadFile("./accounts.txt"));
+        //     var transactions = new TransactionParser().ParseFile(reader.ReadFile("./transactions.txt"));
 
+        //     var processor = new Processor(converter, accounts, transactions);
 
+        //     processor.Process();
 
-
-            //var accounts = new List<Account>()
-            //{
-            //    new Account() { AccountNumber = "12345", BalanceAmount = 100d, BalanceCurrency = Currency.EUD, Name = "Joe Smith" },
-            //    new Account() { AccountNumber = "12346", BalanceAmount = 200d, BalanceCurrency = Currency.MXN, Name = "Joe Smyth" },
-            //    new Account() { AccountNumber = "12347", BalanceAmount = 300d, BalanceCurrency = Currency.GBP, Name = "Joe Herrera" },
-            //    new Account() { AccountNumber = "12348", BalanceAmount = 400d, BalanceCurrency = Currency.USD, Name = "Joe Paramo" },
-            //    new Account() { AccountNumber = "12349", BalanceAmount = 500d, BalanceCurrency = Currency.EUD, Name = "Joe Gutierrez" },
-            //    new Account() { AccountNumber = "12350", BalanceAmount = 600d, BalanceCurrency = Currency.GBP, Name = "Joe Dominquez" },
-            //    new Account() { AccountNumber = "12351", BalanceAmount = 700d, BalanceCurrency = Currency.THB, Name = "Joe Perez" }
-            //};
-
-            //var transactions = new List<Transaction>() {
-            //    new Bill(){ AccountNumber="12345", Amount= 200d, Bucket="Dues", Currency= Currency.EUD },
-            //    new Bill(){ AccountNumber="12346", Amount= 100d, Bucket="Dues", Currency= Currency.GBP },
-
-            //    new Payment(){ AccountNumber="12345", Amount= 100d, Source="Online Payment", Currency= Currency.EUD},
-            //    new Payment(){ AccountNumber="12345", Amount= 100d, Source="Online Payment", Currency= Currency.EUD },
-            //    new Payment(){ AccountNumber="12346", Amount= 15d, Source="Online Payment", Currency= Currency.MXN },
-            //};
-            var processor = new Processor(converter, accounts, transactions);
-
-            //accounts.ForEach(a => Console.WriteLine($"Account: {a.AccountNumber}, Balance: {a.BalanceAmount}, {a.BalanceCurrency.ToString()}"));
-
-            processor.Process();
-
-                        foreach (var account in accounts)
-            {
-                Console.WriteLine(account);
+        //     foreach (var account in accounts)
+        //     {
+        //         Console.WriteLine(account);
+        //     }
+        // }
+        static void Main(string[] args) {
+            var map = new Dictionary<string, int>();
+            var start = DateTime.Now;
+            for(var i = 0; i < 1000000; ++i) {
+                map.Add(i.ToString(), i * 10);
             }
-
-            //accounts.ForEach(a => Console.WriteLine($"Account: {a.AccountNumber}, Balance: {a.BalanceAmount}, {a.BalanceCurrency.ToString()}"));
-
-
-
-            //foreach (var test in testExchangeData)
-            //{
-            //    var fromTo = converter.Convert(test.From, test.To, 1);
-            //    var toFrom = converter.Convert(test.To, test.From, 1);
-            //    Console.WriteLine($"From: {test.From} To: {test.To} Result: {fromTo}");
-            //    Console.WriteLine($"From: {test.To} To: {test.From} Result: {toFrom}");
-            //    Console.WriteLine("------------------");
-            //}
-
-            //Console.ReadLine();
-
+            var end = DateTime.Now;
+            Console.WriteLine((end - start).TotalMilliseconds);
         }
     }
 

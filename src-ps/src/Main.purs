@@ -4,8 +4,9 @@ import Prelude
 
 import Control.Monad.ST.Internal (ST, foreach)
 import Control.Monad.ST.Internal (ST, foreach, run)
-import Data.Array (index, partition, length, snoc, filter, nub, take, cons, fromFoldable, singleton, mapMaybe)
-import Data.Array.ST (empty, push, freeze, unsafeFreeze)
+import Control.Monad.State (get)
+import Data.Array (index, partition, length, snoc, filter, nub, take, range, cons, fromFoldable, singleton, mapMaybe)
+import Data.Array.ST (STArray, empty, freeze, push, unsafeFreeze)
 import Data.Either (Either(..), either, isRight, isLeft, hush)
 import Data.Foldable (foldl, foldr)
 import Data.Function (apply, applyFlipped)
@@ -26,10 +27,10 @@ import Effect (Effect, foreachE)
 import Effect.Console (log)
 import Effect.Exception (throwException)
 import Effect.Now (nowTime)
+import Foreign.Object (Object, freezeST)
+import Foreign.Object.ST (STObject, new, poke)
 import Node.Encoding (Encoding(..))
 import Node.FS.Sync (readTextFile)
-
-import Foreign.Object.ST (STObject, new, poke)
 
 foreign import now :: Effect Number
 
@@ -67,27 +68,109 @@ rights1 array =
     run inner
 
 
+fastFold :: forall k v. Ord k => Show k => Array (Tuple k v) -> Object v
+fastFold arr =
+  -- foldl (\acc record -> insert record.key record acc) Map.empty ArrayOfRecords
+  let
+    
+    -- poke :: forall a r. String -> a -> STObject r a -> ST r (STObject r a)
+    f :: forall r . STObject r v -> Tuple k v -> ST r Unit
+    f map' (Tuple k v) = (poke (show k) v map' *> pure unit) 
+
+    inner :: forall r. ST r (Object v)
+    inner = do
+      
+    -- map' :: STObject r v
+      map' <- new :: ST r (STObject r v)
+      
+      -- let f map' (Tuple k v) = (poke (show k) v map' *> pure unit) 
+  
+      _ <- foreach arr (f map') -- (\(k /\ v) -> poke (show k) v map' *> pure unit )
+      
+      --freezeST :: forall a r. STObject r a -> ST r (Object a)
+
+      freezeST map'
+  in
+    run inner
 
 
--- createAccountLookup1 :: Array Account -> Map AccountNumber Account
--- createAccountLookup1 accounts =
---   -- foldl (\acc acct -> insert acct.accountNumber acct acc) Map.empty accounts
---   let 
---     inner :: forall b c. ST c (STObject c b)
---     inner = do
---       -- Go create a new empty array
---       -- empty :: forall a. f a
-      
---       map' <- new -- :: Map { accountNumber :: String , balance :: { amount :: Number, currency :: Currency}, name :: String}
-      
---       -- poke :: forall a r. String -> a -> STObject r a -> ST r (STObject r a)
---       -- Update the value for a key in a mutable object
---       _ <- foreach accounts (\acct -> poke acct.accountNumber acct map' *> pure unit )
-      
---       pure map'
---   in
---     run inner
 
+
+
+-- class UpdateAsMutable a where
+--   get :: 
+--   set :: 
+--   freeze :: STArray b -> Array b
+--   unfreeze :: Array b -> STArray b
+  
+--   freeze :: STObject b -> Object b
+--   unfreeze :: Object b -> STObject b
+
+--   freeze :: ?? -> Map k v
+--   unfreeze :: CMap k v -> STCMap r k v
+
+--   var map = new CMap();
+--   map.beginMutation(); :: CMap k v -> STCMap r k v
+--   map.insert(a, b);
+--   map.insert(a, b);
+--   map.insert(a, b);
+--   map.endMutation();
+
+
+
+-- fastFold' :: (b -> a -> b) -> Array b -> Foldable a -> b
+-- create STArray
+-- copy contents of Array b -> STArray
+-- fold
+-- freeze
+-- return final value
+
+
+-- fastUpdate :: Array a -> (MutableArray a -> MutableArray a) -> Array a
+-- fastUpdate arr fn = do
+--   mut = unfreeze arr
+--   fn mut
+--   freeze mut
+
+-- foldFn :: (MutableArray a -> b -> MutableArray a)
+-- foldFn mutArr value = mutatingPush value mutArr
+
+-- fastUpdate regularArray (\mutArray -> foldl foldFn empty mutArray)
+
+
+-- exports.fastPush = (array, item) => array.push(item);
+-- exports.fastLookup = (map, key) => map[key] ?? Maybe.Nothing()
+-- exports.fastInsert = (map, key, value) => map[key] = value
+
+-- function fold(fn, start, array){
+--   let accum = start;
+--   for(var val of array) {
+--     accum = fn(accum, val);
+--   }
+-- }
+
+
+-- "Create Account Lookup complete 16265.0" with 1M accounts
+
+createAccountLookup1 :: Array Account -> Map AccountNumber Account
+createAccountLookup1 arr = 
+  Map.fromFoldable $ map (\account -> Tuple account.accountNumber account) arr
+
+createAccountLookup2 :: Array Account -> Object Account
+createAccountLookup2 arr = 
+  fastFold $ map (\account -> Tuple account.accountNumber account) arr
+
+
+
+
+
+
+-- __ :: Array a -> (a -> Tuple k a) -> Array (Tuple k a)
+
+-- fromFoldable $ map (\a -> Tuple a.key a) 
+
+-- Map
+-- fromFoldable :: forall f k v. Ord k => Foldable f => f (Tuple k v) -> Map k v
 
 
 
@@ -156,6 +239,28 @@ transactionList = [payment, bill, payment]
 
 main :: Effect Unit
 main = do  
+
+  let 
+    inner :: forall r. Array Int -> ST r (Object Int)
+    inner arr = do
+      
+      map' <- new :: ST r (STObject r Int)
+      
+      _ <- foreach arr (\i -> poke (show i) (i * 10) map' *> pure unit)  -- (\(k /\ v) -> poke (show k) v map' *> pure unit )
+      
+      freezeST map'
+
+  let arr = range 1 1000000
+  log "start"
+  t0 <- now
+  let a = run (inner arr)
+  t1 <- now
+  log $ "End " <> show (t1 - t0)
+
+
+
+main2 :: Effect Unit
+main2 = do  
   
   tt0 <- now
   accountsText <- readTextFile UTF8 "accounts-1m.txt"
@@ -181,6 +286,21 @@ main = do
   tt4 <- now
   log <| "Rights1 complete " <> (show <| tt4 - tt3)
 
+  -- createAccountLookup is slow because of `insert`
+
+  -- 15330.0
+  let accountLookup = createAccountLookup validAccounts
+  tt5 <- now
+  log <| "Create Account Lookup complete " <> (show <| tt5 - tt4)
+
+  -- 16482.0
+  let tupledAccounts = map (\account -> Tuple account.accountNumber account) validAccounts
+  tt6 <- now
+  log <| "Create tupledAccounts complete " <> (show <| tt6 - tt5)
+
+  let accountLookup2 = fastFold tupledAccounts
+  tt7 <- now
+  log <| "Create Account Lookup 2 complete " <> (show <| tt7 - tt6)
   
 
 --  To run:
