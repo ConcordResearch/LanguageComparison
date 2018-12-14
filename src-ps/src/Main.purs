@@ -12,8 +12,10 @@ import Data.Foldable (foldl, foldr)
 import Data.Function (apply, applyFlipped)
 import Data.Int (fromString) as DataInt
 import Data.List.Lazy (elemLastIndex)
-import Data.Map (Map, insert, lookup, values)
+import Data.Map (Map) --, insert, lookup, values)
 import Data.Map as Map
+import Data.HashMap (HashMap, insert, lookup, values)
+import Data.HashMap as HM
 import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.Number (fromString) as DataNumber
 import Data.String (Pattern(..))
@@ -31,8 +33,7 @@ import Foreign.Object (Object, freezeST)
 import Foreign.Object.ST (STObject, new, poke)
 import Node.Encoding (Encoding(..))
 import Node.FS.Sync (readTextFile)
-import Data.HashMap (HashMap)
-import Data.HashMap as HM
+
 
 import FastFold (fastFold, fastPush, MutableArray)
 import FastFold as FF
@@ -45,7 +46,7 @@ infixl 0 applyFlipped as |>
 
 main :: Effect Unit
 main = do
-  main2
+  main1
 
 
 -- Rights complete 481.0
@@ -228,17 +229,17 @@ makeCurrencyConversionLookup currencyMappings =
     currencies = nub <| map fst currencyMappings <> map (\(a /\ b /\ c) -> b) currencyMappings
     
     currencyLookup :: Map Currency (Map Currency Number)
-    currencyLookup = foldl (\accumulator currency -> insert currency Map.empty accumulator) Map.empty currencies
+    currencyLookup = foldl (\accumulator currency -> Map.insert currency Map.empty accumulator) Map.empty currencies
     
     insertRateAndInverse :: Map Currency (Map Currency Number) -> Tuple3 Currency Currency Number -> Maybe (Map Currency (Map Currency Number))
     insertRateAndInverse currencyMap (from /\ to /\ rate /\ unit) = do  
-      fromCurrencyMap <- lookup from currencyMap
-      toCurrencyMap <- lookup to currencyMap
-      let newFromMap = insert to rate fromCurrencyMap :: Map Currency Number
-      let newToMap = insert from (1.0/rate) toCurrencyMap
+      fromCurrencyMap <- Map.lookup from currencyMap
+      toCurrencyMap <- Map.lookup to currencyMap
+      let newFromMap = Map.insert to rate fromCurrencyMap :: Map Currency Number
+      let newToMap = Map.insert from (1.0/rate) toCurrencyMap
 
-      insert from newFromMap currencyMap
-        |> insert to newToMap 
+      Map.insert from newFromMap currencyMap
+        |> Map.insert to newToMap 
         |> pure
   in
     foldl 
@@ -363,7 +364,7 @@ main1 = do
   tt4 <- now
   log <| "Accounts Right Complete " <> (show <| tt4 - tt3)
   
-  let accountLookup = createAccountLookup validAccounts
+  let accountLookup = createAccountLookup3 validAccounts
   tt5 <- now
   log <| "Create Account Lookup complete " <> (show <| tt5 - tt4)
   
@@ -384,6 +385,16 @@ main1 = do
   tt8 <- now
   
   
+  -- After HashMap change
+  -- Read Accounts Complete 50.0
+  -- Read Transactions Complete 60.0
+  -- Parse Accounts complete 3605.0
+  -- Accounts Right Complete 149.0
+  -- Create Account Lookup complete 2995.0
+  -- Parse Transaction Complete 4743.0
+  -- Process Transactions Complete 26034.0
+  -- Complete 35039.0
+  -- Total 72675.0
   
   log <| "Read Accounts Complete " <> (show <| tt1 - tt0)
   log <| "Read Transactions Complete " <> (show <| tt2 - tt1)
@@ -393,6 +404,7 @@ main1 = do
   log <| "Parse Transaction Complete " <> (show <| tt6 - tt5)
   log <| "Process Transactions Complete " <> (show <| tt7 - tt6)
   log <| "Complete " <> (show <| tt8 - tt7)
+  log <| "Total " <> (show <| tt8 - tt0)
   pure unit
 
 data Currency = USD | MXN | EUD | THB | GBP 
@@ -415,8 +427,8 @@ convert conversionRates money targetCurrency =
   if money.currency == targetCurrency
   then Just <| money
   else do
-    currencySpecificConversionRates <- lookup money.currency conversionRates
-    conversionRate <- lookup targetCurrency currencySpecificConversionRates
+    currencySpecificConversionRates <- Map.lookup money.currency conversionRates
+    conversionRate <- Map.lookup targetCurrency currencySpecificConversionRates
     Just <| { amount: money.amount * conversionRate, currency: targetCurrency }
 
 type AccountNumber = String
@@ -531,35 +543,35 @@ parseTransaction text = do
 
 createAccountLookup :: Array Account -> Map AccountNumber Account
 createAccountLookup accounts =
-  foldl (\acc acct -> insert acct.accountNumber acct acc) Map.empty accounts
+  foldl (\acc acct -> Map.insert acct.accountNumber acct acc) Map.empty accounts
 
--- > processTransactions
-processTransactions :: Map AccountNumber Account -> Array Transaction -> Tuple (Array String) (Map AccountNumber Account)
+
+processTransactions :: HashMap AccountNumber Account -> Array Transaction -> Tuple (Array String) (HashMap AccountNumber Account)
 processTransactions accounts transactions =
   let
     getAccountNumber (Bill {accountNumber}) = accountNumber
     getAccountNumber (Payment {accountNumber}) = accountNumber
 
-    applyTransaction :: Map AccountNumber Account -> Transaction -> Maybe Account
+    applyTransaction :: HashMap AccountNumber Account -> Transaction -> Maybe Account
     applyTransaction accts transaction = do
       acct <- lookup (getAccountNumber transaction) accts
       processTransaction currencyConversionLookup transaction acct
 
     applyResult 
       :: Array String 
-      -> Map AccountNumber Account 
+      -> HashMap AccountNumber Account 
       -> Transaction 
       -> Maybe Account 
-      -> Tuple (Array String) (Map AccountNumber Account)
+      -> Tuple (Array String) (HashMap AccountNumber Account)
     applyResult errors accounts transaction (Just account) =
       errors /\ insert account.accountNumber account accounts
     applyResult errors accounts transaction Nothing =
       errors `snoc` ("Failed to process transaction: " <> show transaction) /\ accounts
 
     buildResult 
-      :: Tuple (Array String) (Map AccountNumber Account) 
+      :: Tuple (Array String) (HashMap AccountNumber Account) 
       -> Transaction 
-      -> Tuple (Array String) (Map AccountNumber Account)
+      -> Tuple (Array String) (HashMap AccountNumber Account)
     buildResult (errors /\ accounts) transaction =
       applyTransaction accounts transaction |>
         applyResult errors accounts transaction
