@@ -378,11 +378,15 @@ main1 = do
   tt7 <- now
   log <| "Process Transactions Complete " <> (show <| tt7 - tt6)
 
+  let processedValues = fromFoldable $ values accountMap
+  tt8 <- now
+  log <| "Values ToArray Complete " <> (show <| tt8 - tt7)
+
   --the use of `traverse` was very slow. using foreachE solves it
   --_ <- traverse ( show >>> log ) (values accountMap)  
-  foreachE (fromFoldable $ values accountMap) ( show >>> log )
+  foreachE (processedValues) ( show >>> log )
   
-  tt8 <- now
+  tt9 <- now
   
   -- Before HashMap change - on GB laptop
   -- Read Accounts Complete 47.0
@@ -396,15 +400,17 @@ main1 = do
   -- Total 97874.0
   
   -- After HashMap change - on GB laptop
-  -- Read Accounts Complete 50.0
-  -- Read Transactions Complete 60.0
-  -- Parse Accounts complete 3605.0
-  -- Accounts Right Complete 149.0
-  -- Create Account Lookup complete 2995.0
-  -- Parse Transaction Complete 4743.0
-  -- Process Transactions Complete 26034.0
-  -- Complete 35039.0
-  -- Total 72675.0
+  -- Read Accounts Complete 49.0
+  -- Read Transactions Complete 61.0
+  -- Parse Accounts complete 3731.0
+  -- Accounts Right Complete 152.0
+  -- Create Account Lookup complete 2953.0
+  -- Parse Transaction Complete 4730.0
+  -- Process Transactions Complete 27945.0
+  -- Values ToArray Complete 1017.0
+  -- Complete 31522.0
+  -- Total 72160.0
+
   
   log <| "Read Accounts Complete " <> (show <| tt1 - tt0)
   log <| "Read Transactions Complete " <> (show <| tt2 - tt1)
@@ -413,8 +419,9 @@ main1 = do
   log <| "Create Account Lookup complete " <> (show <| tt5 - tt4)
   log <| "Parse Transaction Complete " <> (show <| tt6 - tt5)
   log <| "Process Transactions Complete " <> (show <| tt7 - tt6)
-  log <| "Complete " <> (show <| tt8 - tt7)
-  log <| "Total " <> (show <| tt8 - tt0)
+  log <| "Values ToArray Complete " <> (show <| tt8 - tt7)
+  log <| "Complete " <> (show <| tt9 - tt8)
+  log <| "Total " <> (show <| tt9 - tt0)
   pure unit
 
 data Currency = USD | MXN | EUD | THB | GBP 
