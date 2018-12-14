@@ -57,6 +57,71 @@ main = do
 
 
 
+
+
+
+
+
+
+
+--for Map
+-- fold :: forall a z. (z -> String -> a -> z) -> z -> Object a -> z
+
+
+
+-- class UpdateAsMutable a where
+--   get :: 
+--   set :: 
+--   freeze :: STArray b -> Array b
+--   unfreeze :: Array b -> STArray b
+  
+--   freeze :: STObject b -> Object b
+--   unfreeze :: Object b -> STObject b
+
+--   freeze :: ?? -> Map k v
+--   unfreeze :: CMap k v -> STCMap r k v
+
+--   var map = new CMap();
+--   map.beginMutation(); :: CMap k v -> STCMap r k v
+--   map.insert(a, b);
+--   map.insert(a, b);
+--   map.insert(a, b);
+--   map.endMutation();
+
+
+
+-- fastFold' :: (b -> a -> b) -> Array b -> Foldable a -> b
+-- create STArray
+-- copy contents of Array b -> STArray
+-- fold
+-- freeze
+-- return final value
+
+
+-- fastUpdate :: Array a -> (MutableArray a -> MutableArray a) -> Array a
+-- fastUpdate arr fn = do
+--   mut = unfreeze arr
+--   fn mut
+--   freeze mut
+
+-- foldFn :: (MutableArray a -> b -> MutableArray a)
+-- foldFn mutArr value = mutatingPush value mutArr
+
+-- fastUpdate regularArray (\mutArray -> foldl foldFn empty mutArray)
+
+
+-- exports.fastPush = (array, item) => array.push(item);
+-- exports.fastLookup = (map, key) => map[key] ?? Maybe.Nothing()
+-- exports.fastInsert = (map, key, value) => map[key] = value
+
+-- function fold(fn, start, array){
+--   let accum = start;
+--   for(var val of array) {
+--     accum = fn(accum, val);
+--   }
+-- }
+
+
 -- Example of the ST monad to push values into an array.
 
 -- Rights complete 481.0

@@ -1,4 +1,9 @@
-module FastFold where
+module FastFold
+  ( fastFold
+  , fastPush
+  , MutableArray
+  , main
+  ) where
 
 import Prelude
 
@@ -6,7 +11,7 @@ import Control.Monad.ST.Internal (ST, foreach)
 import Control.Monad.ST.Internal (ST, foreach, run)
 import Control.Monad.State (get)
 import Data.Array (index, partition, length, snoc, filter, nub, take, range, cons, fromFoldable, singleton, mapMaybe)
-import Data.Array.ST (STArray, empty, freeze, push, unsafeFreeze)
+-- import Data.Array.ST  (STArray, empty, freeze, push, unsafeFreeze)
 import Data.Either (Either(..), either, isRight, isLeft, hush)
 import Data.Foldable (foldl, foldr)
 import Data.Function (apply, applyFlipped)
@@ -29,64 +34,159 @@ import Effect.Exception (throwException)
 import Effect.Now (nowTime)
 import Foreign.Object (Object, freezeST)
 import Foreign.Object.ST (STObject, new, poke)
+import Foreign.Object.ST.Unsafe (unsafeFreeze)
 import Node.Encoding (Encoding(..))
 import Node.FS.Sync (readTextFile)
+import Data.HashMap as HM
 
--- foreign import now :: Effect Number
+foreign import now :: Effect Number
 
 main :: Effect Unit
 main = do  
 
-  test
+  testSTOpt
 
 
-test :: Effect Unit
-test = do
+-- test :: Effect Unit
+-- test = do
+
+--   log $ show (fastFold (\a mutArr -> push a mutArr) [] [1,2,3])
+
+-- class (Functor f) <= MutableArray a where
+--   map :: (a -> b) -> f a -> f b
+
+-- instance showMaybe :: Show a => Show (Maybe a) where
+--   show (Just a) = "Just (" <> show a <> ")"
+
+data MutableArray a = MutableArray a
+
+-- instance bindMutableArray :: MutableArray a where
+--   bind = 
+
+foreign import mutableArrayBind :: forall a b. MutableArray a -> (a -> MutableArray b) -> MutableArray b
+
+-- instance applyMutableArray :: Bind MutableArray where
+--   bind = mutableArrayBind
+
+-- instance bindMutableArray :: Bind MutableArray where
+--   bind = mutableArrayBind
+
+foreign import unfreeze :: forall a. Array a -> MutableArray a
+foreign import freeze :: forall a. MutableArray a -> Array a
+foreign import push :: forall a. a -> MutableArray a -> MutableArray a
+foreign import fastFoldr :: forall a b f. (a -> b -> b) -> b -> f a -> b
+-- foreign import fastFoldMap :: forall a b f. (a -> b -> b) -> b -> f a -> b
+
+fastPush :: forall a. a -> MutableArray a -> MutableArray a
+fastPush = push
+
+-- fastFold (\a mutArr -> push a mutArr) [] [1,2,3]
+fastFold :: forall a b. (a -> MutableArray b -> MutableArray b) -> Array b ->  Array a -> Array b
+fastFold fn init arr = 
+  freeze ( fastFoldr fn (unfreeze init) arr )
+
+-- fastFoldMap :: forall b k v. (k -> v -> MutableArray b -> MutableArray b) -> Array b ->  Array (Tuple k v) -> Array b
+-- fastFoldMap fn init arr = 
+--   freeze ( fastFoldMap fn (unfreeze init) arr )
+
+
+
+testHashMap :: Effect Unit
+testHashMap = do
+  -- 2936.0 w/ HashMap
+  let arr = range 1 1000000
+  log "start hash"
+  t0 <- now
+  
+  let a = foldl (\acc i -> HM.insert (show i) (i * 10) acc) HM.empty arr
+
+  t1 <- now
+  log $ "End hash" <> show (t1 - t0)
+  log ""
+
+testSTOpt :: Effect Unit
+testSTOpt = do
+  -- 727.0 w/ unsafeFreeze and do
+  -- 984.0 w/ freeze and do
+  -- 1574.0 w/ freeze and NOT do
+  -- 1298.0 w/ unsafeFreeze and NOT do
   let 
     inner :: forall r. Array Int -> ST r (Object Int)
     inner arr = do
       
       map' <- new :: ST r (STObject r Int)
       
-      _ <- foreach arr (\i -> poke (show i) (i * 10) map' *> pure unit)  -- (\(k /\ v) -> poke (show k) v map' *> pure unit )
-      
-      freezeST map'
+      -- _ <- foreach arr \i -> do
+      --   _ <- poke (show i) (i * 10) map'
+      --   pure unit
 
-  -- let arr = range 1 1000000
-  -- log "start"
-  -- t0 <- now
-  -- let a = run (inner arr)
-  -- t1 <- now
-  -- log $ "End " <> show (t1 - t0)
+      _ <- foreach arr (\i -> poke (show i) (i * 10) map' *> pure unit)
+
+      unsafeFreeze map'
+      -- freezeST map'
+
+  let arr = range 1 1000000
+  log "start"
+  t0 <- now
+  let a = run (inner arr)
+  t1 <- now
+  log $ "End " <> show (t1 - t0)
+  log ""
+
+
+testST :: Effect Unit
+testST = do
+  -- 1588.0
+  let 
+    inner :: forall r. Array Int -> ST r (Object Int)
+    inner arr = do
+      
+      map' <- new :: ST r (STObject r Int)
+      
+      _ <- foreach arr (\i -> poke (show i) (i * 10) map' *> pure unit)
+      
+      -- foreach arr \i -> do
+      --   _ <- poke ...
+      --   pure unit
+
+      freezeST map'
+      -- unsafeFreeze
+
+  let arr = range 1 1000000
+  log "start"
+  t0 <- now
+  let a = run (inner arr)
+  t1 <- now
+  log $ "End " <> show (t1 - t0)
   log ""
 
 
 
 
-fastFold :: forall k v. Ord k => Show k => Array (Tuple k v) -> Object v
-fastFold arr =
-  -- foldl (\acc record -> insert record.key record acc) Map.empty ArrayOfRecords
-  let
+-- fastFold :: forall k v. Ord k => Show k => Array (Tuple k v) -> Object v
+-- fastFold arr =
+--   -- foldl (\acc record -> insert record.key record acc) Map.empty ArrayOfRecords
+--   let
     
-    -- poke :: forall a r. String -> a -> STObject r a -> ST r (STObject r a)
-    f :: forall r . STObject r v -> Tuple k v -> ST r Unit
-    f map' (Tuple k v) = (poke (show k) v map' *> pure unit) 
+--     -- poke :: forall a r. String -> a -> STObject r a -> ST r (STObject r a)
+--     f :: forall r . STObject r v -> Tuple k v -> ST r Unit
+--     f map' (Tuple k v) = (poke (show k) v map' *> pure unit) 
 
-    inner :: forall r. ST r (Object v)
-    inner = do
+--     inner :: forall r. ST r (Object v)
+--     inner = do
       
-    -- map' :: STObject r v
-      map' <- new :: ST r (STObject r v)
+--     -- map' :: STObject r v
+--       map' <- new :: ST r (STObject r v)
       
-      -- let f map' (Tuple k v) = (poke (show k) v map' *> pure unit) 
+--       -- let f map' (Tuple k v) = (poke (show k) v map' *> pure unit) 
   
-      _ <- foreach arr (f map') -- (\(k /\ v) -> poke (show k) v map' *> pure unit )
+--       _ <- foreach arr (f map') -- (\(k /\ v) -> poke (show k) v map' *> pure unit )
       
-      --freezeST :: forall a r. STObject r a -> ST r (Object a)
+--       --freezeST :: forall a r. STObject r a -> ST r (Object a)
 
-      freezeST map'
-  in
-    run inner
+--       freezeST map'
+--   in
+--     run inner
 
 
 -- class UpdateAsMutable a where

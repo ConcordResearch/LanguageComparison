@@ -32,12 +32,18 @@ import Foreign.Object.ST (STObject, new, poke)
 import Node.Encoding (Encoding(..))
 import Node.FS.Sync (readTextFile)
 
+import FastFold (fastFold, fastPush, MutableArray)
+import FastFold as FF
+
 foreign import now :: Effect Number
 
 infixr 0 apply as <|
 infixl 0 applyFlipped as |>
 
 
+main :: Effect Unit
+main = do
+  FF.main
 
 
 -- Rights complete 481.0
@@ -68,30 +74,37 @@ rights1 array =
     run inner
 
 
-fastFold :: forall k v. Ord k => Show k => Array (Tuple k v) -> Object v
-fastFold arr =
-  -- foldl (\acc record -> insert record.key record acc) Map.empty ArrayOfRecords
-  let
+
+
+-- To Look at:
+-- HashMap  https://github.com/fehrenbach/purescript-unordered-collections
+-- Binary search on list https://pursuit.purescript.org/packages/purescript-sorted-arrays/0.2.0
+
+
+-- fastFold :: forall k v. Ord k => Show k => Array (Tuple k v) -> Object v
+-- fastFold arr =
+--   -- foldl (\acc record -> insert record.key record acc) Map.empty ArrayOfRecords
+--   let
     
-    -- poke :: forall a r. String -> a -> STObject r a -> ST r (STObject r a)
-    f :: forall r . STObject r v -> Tuple k v -> ST r Unit
-    f map' (Tuple k v) = (poke (show k) v map' *> pure unit) 
+--     -- poke :: forall a r. String -> a -> STObject r a -> ST r (STObject r a)
+--     f :: forall r . STObject r v -> Tuple k v -> ST r Unit
+--     f map' (Tuple k v) = (poke (show k) v map' *> pure unit) 
 
-    inner :: forall r. ST r (Object v)
-    inner = do
+--     inner :: forall r. ST r (Object v)
+--     inner = do
       
-    -- map' :: STObject r v
-      map' <- new :: ST r (STObject r v)
+--     -- map' :: STObject r v
+--       map' <- new :: ST r (STObject r v)
       
-      -- let f map' (Tuple k v) = (poke (show k) v map' *> pure unit) 
+--       -- let f map' (Tuple k v) = (poke (show k) v map' *> pure unit) 
   
-      _ <- foreach arr (f map') -- (\(k /\ v) -> poke (show k) v map' *> pure unit )
+--       _ <- foreach arr (f map') -- (\(k /\ v) -> poke (show k) v map' *> pure unit )
       
-      --freezeST :: forall a r. STObject r a -> ST r (Object a)
+--       --freezeST :: forall a r. STObject r a -> ST r (Object a)
 
-      freezeST map'
-  in
-    run inner
+--       freezeST map'
+--   in
+--     run inner
 
 
 
@@ -156,9 +169,10 @@ createAccountLookup1 :: Array Account -> Map AccountNumber Account
 createAccountLookup1 arr = 
   Map.fromFoldable $ map (\account -> Tuple account.accountNumber account) arr
 
-createAccountLookup2 :: Array Account -> Object Account
-createAccountLookup2 arr = 
-  fastFold $ map (\account -> Tuple account.accountNumber account) arr
+-- createAccountLookup2 :: Array Account -> Object Account
+-- createAccountLookup2 arr = 
+  -- fastFold $ map (\account -> Tuple account.accountNumber account) arr
+  
 
 
 
@@ -237,8 +251,19 @@ accountMap = createAccountLookup [account]
 transactionList = [payment, bill, payment]
 
 
-main :: Effect Unit
-main = do  
+main4 :: Effect Unit
+main4 = do  
+  -- End 160.0
+  let arr = range 1 1000000
+  log "start"
+  t0 <- now
+  let a = fastFold (\a mutArr -> fastPush a mutArr) [] arr
+  t1 <- now
+  log $ "End " <> show (t1 - t0)
+
+
+main3 :: Effect Unit
+main3 = do  
 
   let 
     inner :: forall r. Array Int -> ST r (Object Int)
@@ -298,10 +323,9 @@ main2 = do
   tt6 <- now
   log <| "Create tupledAccounts complete " <> (show <| tt6 - tt5)
 
-  let accountLookup2 = fastFold tupledAccounts
-  tt7 <- now
-  log <| "Create Account Lookup 2 complete " <> (show <| tt7 - tt6)
-  
+  -- let accountLookup2 = fastFold tupledAccounts
+  -- tt7 <- now
+  -- log <| "Create Account Lookup 2 complete " <> (show <| tt7 - tt6)
 
 --  To run:
 --    $ node -e "require('./output/Main').main()"
