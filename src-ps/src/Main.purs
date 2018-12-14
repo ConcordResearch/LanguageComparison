@@ -2,201 +2,102 @@ module Main where
 
 import Prelude
 
-import Control.Monad.ST.Internal (ST, foreach)
-import Control.Monad.ST.Internal (ST, foreach, run)
-import Control.Monad.State (get)
-import Data.Array (index, partition, length, snoc, filter, nub, take, range, cons, fromFoldable, singleton, mapMaybe)
-import Data.Array.ST (STArray, empty, freeze, push, unsafeFreeze)
-import Data.Either (Either(..), either, isRight, isLeft, hush)
-import Data.Foldable (foldl, foldr)
-import Data.Function (apply, applyFlipped)
+-- import Control.Monad.ST.Internal (ST, foreach, run)
+-- import Control.Monad.State (get)
+import Data.Array (index, snoc, nub, fromFoldable, mapMaybe)
+-- import Data.Array.ST (STArray, empty, freeze, push, unsafeFreeze)
+import Data.Either (Either(..), either, hush)
+import Data.Foldable (foldl)
+-- import Data.Function (apply, applyFlipped)
+import Data.Function as Function
 import Data.Int (fromString) as DataInt
-import Data.List.Lazy (elemLastIndex)
+-- import Data.List.Lazy (elemLastIndex)
 import Data.Map (Map) --, insert, lookup, values)
 import Data.Map as Map
 import Data.HashMap (HashMap, insert, lookup, values)
 import Data.HashMap as HM
-import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Number (fromString) as DataNumber
 import Data.String (Pattern(..))
 import Data.String.Common (split)
-import Data.Time (Millisecond, Second, diff)
-import Data.Time.Duration (class Duration, Milliseconds, fromDuration)
-import Data.Traversable (traverse, sequence)
-import Data.Tuple (Tuple(..), fst, snd)
-import Data.Tuple.Nested (Tuple3(..), (/\))
+-- import Data.Time (Millisecond, Second, diff)
+-- import Data.Time.Duration (class Duration, Milliseconds, fromDuration)
+-- import Data.Traversable (traverse, sequence)
+import Data.Tuple (Tuple(..), fst)
+import Data.Tuple.Nested (Tuple3, (/\))
 import Effect (Effect, foreachE)
 import Effect.Console (log)
-import Effect.Exception (throwException)
-import Effect.Now (nowTime)
-import Foreign.Object (Object, freezeST)
-import Foreign.Object.ST (STObject, new, poke)
+-- import Effect.Exception (throwException)
+-- import Effect.Now (nowTime)
+-- import Foreign.Object (Object, freezeST)
+-- import Foreign.Object.ST (STObject, new, poke)
 import Node.Encoding (Encoding(..))
 import Node.FS.Sync (readTextFile)
 
+-- import FastFold (fastFold, fastPush, MutableArray)
+-- import FastFold as FF
 
-import FastFold (fastFold, fastPush, MutableArray)
-import FastFold as FF
+import Time (now)
 
-foreign import now :: Effect Number
+infixr 0 Function.apply as <|
+infixl 0 Function.applyFlipped as |>
 
-infixr 0 apply as <|
-infixl 0 applyFlipped as |>
-
-
+-- |  To run:
+-- |  $ node -e "require('./output/Main').main()"
 main :: Effect Unit
 main = do
   main1
 
+main1 :: Effect Unit
+main1 = do
 
--- Rights complete 481.0
--- Rights1 complete 1605.0
---Rights with a mutable array
-rights1 :: forall a b. Array (Either a b) -> Array b
-rights1 array = 
-  let 
-    inner :: forall c. ST c (Array b)
-    inner = do
-      -- Go create a new empty array
-      -- empty :: forall a. f a
-      arr <- empty
-      
-      let 
-        insertIfValid e =
-          case e of
-            -- push :: forall h a. a -> STArray h a -> ST h Int
-            Right v -> push v arr *> pure unit
-            _ -> pure unit
+  tt0 <- now
+  accountsText <- readTextFile UTF8 "accounts-1m.txt"
+  tt1 <- now
+  log <| "Read Accounts Complete " <> (show <| tt1 - tt0)
+  transactionsText <- readTextFile UTF8 "transactions-1m.txt"
+  tt2 <- now
+  log <| "Read Transactions Complete " <> (show <| tt2 - tt1)
 
-      -- foreach :: forall r a. Array a -> (a -> ST r Unit) -> ST r Unit
-      -- ST.foreach xs f runs the computation returned by the function f for each of the inputs xs.
-      _ <- foreach array insertIfValid --(\a -> push a arr *> pure unit )
-      
-      freeze arr
-  in
-    run inner
-
-
-
-
--- To Look at:
--- HashMap  https://github.com/fehrenbach/purescript-unordered-collections
--- Binary search on list https://pursuit.purescript.org/packages/purescript-sorted-arrays/0.2.0
-
-
--- fastFold :: forall k v. Ord k => Show k => Array (Tuple k v) -> Object v
--- fastFold arr =
---   -- foldl (\acc record -> insert record.key record acc) Map.empty ArrayOfRecords
---   let
-    
---     -- poke :: forall a r. String -> a -> STObject r a -> ST r (STObject r a)
---     f :: forall r . STObject r v -> Tuple k v -> ST r Unit
---     f map' (Tuple k v) = (poke (show k) v map' *> pure unit) 
-
---     inner :: forall r. ST r (Object v)
---     inner = do
-      
---     -- map' :: STObject r v
---       map' <- new :: ST r (STObject r v)
-      
---       -- let f map' (Tuple k v) = (poke (show k) v map' *> pure unit) 
+  let accounts = parseAccounts accountsText
+  tt3 <- now
+  log <| "Parse Accounts complete " <> (show <| tt3 - tt2)
   
---       _ <- foreach arr (f map') -- (\(k /\ v) -> poke (show k) v map' *> pure unit )
-      
---       --freezeST :: forall a r. STObject r a -> ST r (Object a)
-
---       freezeST map'
---   in
---     run inner
-
-
-
-
-
--- class UpdateAsMutable a where
---   get :: 
---   set :: 
---   freeze :: STArray b -> Array b
---   unfreeze :: Array b -> STArray b
+  let validAccounts = rights accounts
+  tt4 <- now
+  log <| "Accounts Right Complete " <> (show <| tt4 - tt3)
   
---   freeze :: STObject b -> Object b
---   unfreeze :: Object b -> STObject b
-
---   freeze :: ?? -> Map k v
---   unfreeze :: CMap k v -> STCMap r k v
-
---   var map = new CMap();
---   map.beginMutation(); :: CMap k v -> STCMap r k v
---   map.insert(a, b);
---   map.insert(a, b);
---   map.insert(a, b);
---   map.endMutation();
-
-
-
--- fastFold' :: (b -> a -> b) -> Array b -> Foldable a -> b
--- create STArray
--- copy contents of Array b -> STArray
--- fold
--- freeze
--- return final value
-
-
--- fastUpdate :: Array a -> (MutableArray a -> MutableArray a) -> Array a
--- fastUpdate arr fn = do
---   mut = unfreeze arr
---   fn mut
---   freeze mut
-
--- foldFn :: (MutableArray a -> b -> MutableArray a)
--- foldFn mutArr value = mutatingPush value mutArr
-
--- fastUpdate regularArray (\mutArray -> foldl foldFn empty mutArray)
-
-
--- exports.fastPush = (array, item) => array.push(item);
--- exports.fastLookup = (map, key) => map[key] ?? Maybe.Nothing()
--- exports.fastInsert = (map, key, value) => map[key] = value
-
--- function fold(fn, start, array){
---   let accum = start;
---   for(var val of array) {
---     accum = fn(accum, val);
---   }
--- }
-
-
--- "Create Account Lookup complete 16265.0" with 1M accounts
-
-createAccountLookup1 :: Array Account -> Map AccountNumber Account
-createAccountLookup1 arr = 
-  Map.fromFoldable $ map (\account -> Tuple account.accountNumber account) arr
-
--- createAccountLookup2 :: Array Account -> Object Account
--- createAccountLookup2 arr = 
-  -- fastFold $ map (\account -> Tuple account.accountNumber account) arr
+  let accountLookup = createAccountLookup validAccounts
+  tt5 <- now
+  log <| "Create Account Lookup complete " <> (show <| tt5 - tt4)
   
-createAccountLookup3 :: Array Account -> HashMap AccountNumber Account
-createAccountLookup3 arr = 
-  HM.fromFoldable $ map (\account -> Tuple account.accountNumber account) arr
+  let transactions = parseTransactions transactionsText
+  let validTransactions = rights transactions
+  tt6 <- now
+  log <| "Parse Transaction Complete " <> (show <| tt6 - tt5)
+  
+  let (errors /\ accountMap) = processTransactions accountLookup validTransactions
+  tt7 <- now
+  log <| "Process Transactions Complete " <> (show <| tt7 - tt6)
 
+  let processedValues = fromFoldable $ values accountMap
+  tt8 <- now
+  log <| "Values ToArray Complete " <> (show <| tt8 - tt7)
 
+  foreachE processedValues ( show >>> log )
+  tt9 <- now
 
-
-
-
--- __ :: Array a -> (a -> Tuple k a) -> Array (Tuple k a)
-
--- fromFoldable $ map (\a -> Tuple a.key a) 
-
--- Map
--- fromFoldable :: forall f k v. Ord k => Foldable f => f (Tuple k v) -> Map k v
-
-
-
-
-
-
+  log <| "Read Accounts Complete " <> (show <| tt1 - tt0)
+  log <| "Read Transactions Complete " <> (show <| tt2 - tt1)
+  log <| "Parse Accounts complete " <> (show <| tt3 - tt2)
+  log <| "Accounts Right Complete " <> (show <| tt4 - tt3)
+  log <| "Create Account Lookup complete " <> (show <| tt5 - tt4)
+  log <| "Parse Transaction Complete " <> (show <| tt6 - tt5)
+  log <| "Process Transactions Complete " <> (show <| tt7 - tt6)
+  log <| "Values ToArray Complete " <> (show <| tt8 - tt7)
+  log <| "Complete " <> (show <| tt9 - tt8)
+  log <| "Total " <> (show <| tt9 - tt0)
+  pure unit
 
 
 rights :: forall a b. Array (Either a b) -> Array b
@@ -255,174 +156,6 @@ bill = Bill { accountNumber: "123", amount: { amount: 25.0, currency: USD}, buck
 
 accountMap = createAccountLookup [account]
 transactionList = [payment, bill, payment]
-
-
-main4 :: Effect Unit
-main4 = do  
-  -- End 160.0
-  let arr = range 1 1000000
-  log "start"
-  t0 <- now
-  let a = fastFold (\a mutArr -> fastPush a mutArr) [] arr
-  t1 <- now
-  log $ "End " <> show (t1 - t0)
-
-
-main3 :: Effect Unit
-main3 = do  
-
-  let 
-    inner :: forall r. Array Int -> ST r (Object Int)
-    inner arr = do
-      
-      map' <- new :: ST r (STObject r Int)
-      
-      _ <- foreach arr (\i -> poke (show i) (i * 10) map' *> pure unit)  -- (\(k /\ v) -> poke (show k) v map' *> pure unit )
-      
-      freezeST map'
-
-  let arr = range 1 1000000
-  log "start"
-  t0 <- now
-  let a = run (inner arr)
-  t1 <- now
-  log $ "End " <> show (t1 - t0)
-
-
-
-main2 :: Effect Unit
-main2 = do  
-  
-  tt0 <- now
-  accountsText <- readTextFile UTF8 "accounts-1m.txt"
-  tt1 <- now
-  log <| "Read Accounts Complete " <> (show <| tt1 - tt0)
-  
-  let accounts = parseAccounts accountsText
-  tt2 <- now
-  log <| "Parse Accounts complete " <> (show <| tt2 - tt1)
-  
-  -- This was REALLY slow cause of `snoc` in the rights/lefts
-  -- let accountErrors = lefts accounts
- 
-  let validAccounts = rights accounts
-  log <| "ValidAccounts " <> show (length validAccounts)
-
-  tt3 <- now
-  log <| "Rights complete " <> (show <| tt3 - tt2)
-
-  let validAccounts1 = rights1 accounts
-  log <| "ValidAccounts1 " <> show (length validAccounts1)
-
-  tt4 <- now
-  log <| "Rights1 complete " <> (show <| tt4 - tt3)
-
-  -- createAccountLookup is slow because of `insert`
-
-  -- 15330.0
-  let accountLookup = createAccountLookup validAccounts
-  tt5 <- now
-  log <| "Create Account Lookup complete " <> (show <| tt5 - tt4)
-
-  -- 16482.0
-  let tupledAccounts = map (\account -> Tuple account.accountNumber account) validAccounts
-  tt6 <- now
-  log <| "Create tupledAccounts complete " <> (show <| tt6 - tt5)
-
-  -- let accountLookup2 = fastFold tupledAccounts
-  -- tt7 <- now
-  -- log <| "Create Account Lookup 2 complete " <> (show <| tt7 - tt6)
-
-  -- 2857.0
-  let accountLookup = createAccountLookup3 validAccounts
-  tt7 <- now
-  log <| "Create Account Lookup 3 complete " <> (show <| tt7 - tt6)
-
-
-
---  To run:
---    $ node -e "require('./output/Main').main()"
-
-main1 :: Effect Unit
-main1 = do
-
-  tt0 <- now
-  accountsText <- readTextFile UTF8 "accounts-1m.txt"
-  tt1 <- now
-  log <| "Read Accounts Complete " <> (show <| tt1 - tt0)
-  transactionsText <- readTextFile UTF8 "transactions-1m.txt"
-  tt2 <- now
-  log <| "Read Transactions Complete " <> (show <| tt2 - tt1)
-
-  let accounts = parseAccounts accountsText
-  tt3 <- now
-  log <| "Parse Accounts complete " <> (show <| tt3 - tt2)
-  
-  -- This was REALLY slow cause of `snoc` in the rights/lefts
-  -- let accountErrors = lefts accounts
-  let validAccounts = rights accounts
-  tt4 <- now
-  log <| "Accounts Right Complete " <> (show <| tt4 - tt3)
-  
-  let accountLookup = createAccountLookup3 validAccounts
-  tt5 <- now
-  log <| "Create Account Lookup complete " <> (show <| tt5 - tt4)
-  
-  let transactions = parseTransactions transactionsText
-  -- let transactionErrors = lefts transactions
-  let validTransactions = rights transactions
-  tt6 <- now
-  log <| "Parse Transaction Complete " <> (show <| tt6 - tt5)
-  
-  let (errors /\ accountMap) = processTransactions accountLookup validTransactions
-  tt7 <- now
-  log <| "Process Transactions Complete " <> (show <| tt7 - tt6)
-
-  let processedValues = fromFoldable $ values accountMap
-  tt8 <- now
-  log <| "Values ToArray Complete " <> (show <| tt8 - tt7)
-
-  --the use of `traverse` was very slow. using foreachE solves it
-  --_ <- traverse ( show >>> log ) (values accountMap)  
-  foreachE (processedValues) ( show >>> log )
-  
-  tt9 <- now
-  
-  -- Before HashMap change - on GB laptop
-  -- Read Accounts Complete 47.0
-  -- Read Transactions Complete 72.0
-  -- Parse Accounts complete 3569.0
-  -- Accounts Right Complete 145.0
-  -- Create Account Lookup complete 10079.0
-  -- Parse Transaction Complete 4404.0
-  -- Process Transactions Complete 37111.0
-  -- Complete 42447.0
-  -- Total 97874.0
-  
-  -- After HashMap change - on GB laptop
-  -- Read Accounts Complete 49.0
-  -- Read Transactions Complete 61.0
-  -- Parse Accounts complete 3731.0
-  -- Accounts Right Complete 152.0
-  -- Create Account Lookup complete 2953.0
-  -- Parse Transaction Complete 4730.0
-  -- Process Transactions Complete 27945.0
-  -- Values ToArray Complete 1017.0
-  -- Complete 31522.0
-  -- Total 72160.0
-
-  
-  log <| "Read Accounts Complete " <> (show <| tt1 - tt0)
-  log <| "Read Transactions Complete " <> (show <| tt2 - tt1)
-  log <| "Parse Accounts complete " <> (show <| tt3 - tt2)
-  log <| "Accounts Right Complete " <> (show <| tt4 - tt3)
-  log <| "Create Account Lookup complete " <> (show <| tt5 - tt4)
-  log <| "Parse Transaction Complete " <> (show <| tt6 - tt5)
-  log <| "Process Transactions Complete " <> (show <| tt7 - tt6)
-  log <| "Values ToArray Complete " <> (show <| tt8 - tt7)
-  log <| "Complete " <> (show <| tt9 - tt8)
-  log <| "Total " <> (show <| tt9 - tt0)
-  pure unit
 
 data Currency = USD | MXN | EUD | THB | GBP 
 instance showCurrency :: Show Currency where
@@ -532,7 +265,6 @@ parseCurrency "EUD" = Just EUD
 parseCurrency "THB" = Just THB
 parseCurrency _ = Nothing
 
--- parseTransactions :: String -> Array (Either String Transaction)
 parseTransactions :: String -> Array (Either String Transaction)
 parseTransactions text =
   let
@@ -552,16 +284,14 @@ parseTransaction text = do
   amount <- getAmount fields 1
   transtype <- index fields 2
   transDetails <- index fields 3
-  
   case transtype of
     "Bill" -> pure <| Bill { accountNumber, amount, bucket: transDetails}
     "Payment" -> pure <| Payment { accountNumber, amount, source: transDetails}
     _ -> Nothing
 
-createAccountLookup :: Array Account -> Map AccountNumber Account
+createAccountLookup :: Array Account -> HashMap AccountNumber Account
 createAccountLookup accounts =
-  foldl (\acc acct -> Map.insert acct.accountNumber acct acc) Map.empty accounts
-
+  HM.fromFoldable $ map (\account -> Tuple account.accountNumber account) accounts
 
 processTransactions :: HashMap AccountNumber Account -> Array Transaction -> Tuple (Array String) (HashMap AccountNumber Account)
 processTransactions accounts transactions =
@@ -612,5 +342,3 @@ processTransaction currencyConversionLookup transaction account = do
         Payment { amount } -> (_ - amount.amount)
   rate <- convert currencyConversionLookup transactionAmount account.balance.currency
   pure <| account { balance = account.balance { amount = transactionOperation account.balance.amount }}
-
-

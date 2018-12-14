@@ -1,6 +1,3 @@
-
-
-
 exports.mutableArrayBind = function (arr) {
   return function (f) {
     var result = [];
@@ -38,5 +35,3 @@ exports.push = function (a) {
     return mutArr;
   }
 }
-
-exports.now = function(){ return Date.now(); }
