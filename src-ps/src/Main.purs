@@ -2,17 +2,12 @@ module Main where
 
 import Prelude
 
--- import Control.Monad.ST.Internal (ST, foreach, run)
--- import Control.Monad.State (get)
 import Data.Array (index, snoc, nub, fromFoldable, mapMaybe)
--- import Data.Array.ST (STArray, empty, freeze, push, unsafeFreeze)
 import Data.Either (Either(..), either, hush)
 import Data.Foldable (foldl)
--- import Data.Function (apply, applyFlipped)
 import Data.Function as Function
 import Data.Int (fromString) as DataInt
--- import Data.List.Lazy (elemLastIndex)
-import Data.Map (Map) --, insert, lookup, values)
+import Data.Map (Map)
 import Data.Map as Map
 import Data.HashMap (HashMap, insert, lookup, values)
 import Data.HashMap as HM
@@ -20,22 +15,12 @@ import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Number (fromString) as DataNumber
 import Data.String (Pattern(..))
 import Data.String.Common (split)
--- import Data.Time (Millisecond, Second, diff)
--- import Data.Time.Duration (class Duration, Milliseconds, fromDuration)
--- import Data.Traversable (traverse, sequence)
 import Data.Tuple (Tuple(..), fst)
 import Data.Tuple.Nested (Tuple3, (/\))
 import Effect (Effect, foreachE)
 import Effect.Console (log)
--- import Effect.Exception (throwException)
--- import Effect.Now (nowTime)
--- import Foreign.Object (Object, freezeST)
--- import Foreign.Object.ST (STObject, new, poke)
 import Node.Encoding (Encoding(..))
 import Node.FS.Sync (readTextFile)
-
--- import FastFold (fastFold, fastPush, MutableArray)
--- import FastFold as FF
 
 import Time (now)
 

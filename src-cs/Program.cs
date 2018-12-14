@@ -62,8 +62,6 @@ namespace CSharpPerfEval
         // }
     }
 
-    //Import file into Data Structures
-
     public enum Currency
     {
         USD,
@@ -91,7 +89,6 @@ namespace CSharpPerfEval
         public string AccountNumber { get; set; }
         public double Amount { get; set; }
         public Currency Currency { get; set; }
-        
     }
 
     public class Bill : Transaction
@@ -103,7 +100,6 @@ namespace CSharpPerfEval
     {
         public string Source { get; set; }
     }
-
 
     public class CurrencyConverter
     {
@@ -161,7 +157,6 @@ namespace CSharpPerfEval
         CurrencyConverter _converter;
         List<Account> accounts;
         List<Transaction> transactions;
-        
 
         public Processor(CurrencyConverter converter, List<Account> accounts, List<Transaction> transactions)
         {
@@ -197,7 +192,6 @@ namespace CSharpPerfEval
             }
         }
 
-        
         private void ApplyTransactionToAccount(Account acct, Transaction trans)
         {
             var amount = trans.Amount;
@@ -291,7 +285,6 @@ namespace CSharpPerfEval
         }
     }
 
-   
     public class AccountParser
     {
         public List<Account> ParseFile(string content)
