@@ -31,6 +31,8 @@ import Foreign.Object (Object, freezeST)
 import Foreign.Object.ST (STObject, new, poke)
 import Node.Encoding (Encoding(..))
 import Node.FS.Sync (readTextFile)
+import Data.HashMap (HashMap)
+import Data.HashMap as HM
 
 import FastFold (fastFold, fastPush, MutableArray)
 import FastFold as FF
@@ -43,7 +45,7 @@ infixl 0 applyFlipped as |>
 
 main :: Effect Unit
 main = do
-  FF.main
+  main2
 
 
 -- Rights complete 481.0
@@ -173,6 +175,9 @@ createAccountLookup1 arr =
 -- createAccountLookup2 arr = 
   -- fastFold $ map (\account -> Tuple account.accountNumber account) arr
   
+createAccountLookup3 :: Array Account -> HashMap AccountNumber Account
+createAccountLookup3 arr = 
+  HM.fromFoldable $ map (\account -> Tuple account.accountNumber account) arr
 
 
 
@@ -327,16 +332,19 @@ main2 = do
   -- tt7 <- now
   -- log <| "Create Account Lookup 2 complete " <> (show <| tt7 - tt6)
 
+  -- 2857.0
+  let accountLookup = createAccountLookup3 validAccounts
+  tt7 <- now
+  log <| "Create Account Lookup 3 complete " <> (show <| tt7 - tt6)
+
+
+
 --  To run:
 --    $ node -e "require('./output/Main').main()"
 
 main1 :: Effect Unit
 main1 = do
 
-  -- import Data.Time.Duration (class Duration, Milliseconds(..), fromDuration)
-
-
-  -- log $ diff 
   tt0 <- now
   accountsText <- readTextFile UTF8 "accounts-1m.txt"
   tt1 <- now
