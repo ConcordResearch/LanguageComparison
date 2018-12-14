@@ -6,52 +6,60 @@ namespace CSharpPerfEval
 {
     class Program
     {
-        // static void Main(string[] args)
-        // {
-        //     var testExchangeData = new List<ExchangeRate>()
-        //     {
-        //         new ExchangeRate(Currency.USD, Currency.MXN, 1.5),
-        //         new ExchangeRate(Currency.USD, Currency.EUD, 2.5),
-        //         new ExchangeRate(Currency.USD, Currency.THB, 3.5),
-        //         new ExchangeRate(Currency.USD, Currency.GBP, 4.5),
+        static void Main(string[] args)
+        {
+            var t0 = DateTime.Now;
+            var testExchangeData = new List<ExchangeRate>()
+            {
+                new ExchangeRate(Currency.USD, Currency.MXN, 1.5),
+                new ExchangeRate(Currency.USD, Currency.EUD, 2.5),
+                new ExchangeRate(Currency.USD, Currency.THB, 3.5),
+                new ExchangeRate(Currency.USD, Currency.GBP, 4.5),
 
                 
-        //         new ExchangeRate(Currency.MXN, Currency.EUD, 2.5),
-        //         new ExchangeRate(Currency.MXN, Currency.THB, 3.5),
-        //         new ExchangeRate(Currency.MXN, Currency.GBP, 4.5),
+                new ExchangeRate(Currency.MXN, Currency.EUD, 2.5),
+                new ExchangeRate(Currency.MXN, Currency.THB, 3.5),
+                new ExchangeRate(Currency.MXN, Currency.GBP, 4.5),
 
-        //         new ExchangeRate(Currency.EUD, Currency.THB, 3.5),
-        //         new ExchangeRate(Currency.EUD, Currency.GBP, 4.5),
+                new ExchangeRate(Currency.EUD, Currency.THB, 3.5),
+                new ExchangeRate(Currency.EUD, Currency.GBP, 4.5),
 
-        //         new ExchangeRate(Currency.THB, Currency.GBP, 4.5)
+                new ExchangeRate(Currency.THB, Currency.GBP, 4.5)
 
-        //     };
+            };
 
-        //     var converter = new CurrencyConverter(testExchangeData);
+            var converter = new CurrencyConverter(testExchangeData);
+            
+            var reader = new FileReader();
 
-        //     var reader = new FileReader();
+            var accounts = new AccountParser().ParseFile(reader.ReadFile("./accounts-1m.txt"));
+            Console.WriteLine("AccountParser complete");
+            var transactions = new TransactionParser().ParseFile(reader.ReadFile("./transactions-1m.txt"));
+            Console.WriteLine("AccountParser complete");
 
-        //     var accounts = new AccountParser().ParseFile(reader.ReadFile("./accounts.txt"));
-        //     var transactions = new TransactionParser().ParseFile(reader.ReadFile("./transactions.txt"));
+            var processor = new Processor(converter, accounts, transactions);
 
-        //     var processor = new Processor(converter, accounts, transactions);
+            Console.WriteLine("AccountParser complete");
 
-        //     processor.Process();
+            processor.Process();
 
-        //     foreach (var account in accounts)
-        //     {
-        //         Console.WriteLine(account);
-        //     }
-        // }
-        static void Main(string[] args) {
-            var map = new Dictionary<string, int>();
-            var start = DateTime.Now;
-            for(var i = 0; i < 1000000; ++i) {
-                map.Add(i.ToString(), i * 10);
+            foreach (var account in accounts)
+            {
+                Console.WriteLine(account);
             }
-            var end = DateTime.Now;
-            Console.WriteLine((end - start).TotalMilliseconds);
+            var t8 = DateTime.Now;
+            Console.WriteLine("AccountParser complete");
+            Console.WriteLine("Complete " +  (t8 - t0).ToString() );
         }
+        // static void Main(string[] args) {
+        //     var map = new Dictionary<string, int>();
+        //     var start = DateTime.Now;
+        //     for(var i = 0; i < 1000000; ++i) {
+        //         map.Add(i.ToString(), i * 10);
+        //     }
+        //     var end = DateTime.Now;
+        //     Console.WriteLine((end - start).TotalMilliseconds);
+        // }
     }
 
     //Import file into Data Structures

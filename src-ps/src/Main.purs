@@ -384,8 +384,18 @@ main1 = do
   
   tt8 <- now
   
+  -- Before HashMap change - on GB laptop
+  -- Read Accounts Complete 47.0
+  -- Read Transactions Complete 72.0
+  -- Parse Accounts complete 3569.0
+  -- Accounts Right Complete 145.0
+  -- Create Account Lookup complete 10079.0
+  -- Parse Transaction Complete 4404.0
+  -- Process Transactions Complete 37111.0
+  -- Complete 42447.0
+  -- Total 97874.0
   
-  -- After HashMap change
+  -- After HashMap change - on GB laptop
   -- Read Accounts Complete 50.0
   -- Read Transactions Complete 60.0
   -- Parse Accounts complete 3605.0
