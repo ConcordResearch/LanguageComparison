@@ -65,7 +65,7 @@ main1 = do
   tt7 <- now
   log <| "Process Transactions Complete " <> (show <| tt7 - tt6)
 
-  let processedValues = fromFoldable $ values accountMap
+  let processedValues = values accountMap
   tt8 <- now
   log <| "Values ToArray Complete " <> (show <| tt8 - tt7)
 

@@ -21,6 +21,12 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
+- array
+- either
+- unordered-containers
+- time
+- split
+- lens
 
 library:
   source-dirs: src
@@ -35,6 +41,7 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - src-hs
+    
 
 tests:
   src-hs-test:
