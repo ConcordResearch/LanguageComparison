@@ -387,6 +387,7 @@ main = do
 -- processTransaction :: HashMap Currency (HashMap Currency Int) -> Transaction -> Account -> Maybe Account
 -- processTransaction currencyConversionLookup transaction account = do
 --   let 
+--     -- replace this with the 'amount' lens
 --     transactionAmount = 
 --       case transaction of
 --         Bill { amount } -> amount
