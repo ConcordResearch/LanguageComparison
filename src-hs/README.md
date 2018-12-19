@@ -1,6 +1,22 @@
 # src-hs
 
 
+First Pass Timings - Lazy
+```
+Read Accounts Complete 0.000072s
+Read Transactions Complete 0.000088s
+Parse Accounts complete 0.000007s
+Accounts Right Complete 0.000009s
+Create Account Lookup complete 0.000005s
+Parse Transaction Complete 0.000008s
+Process Transactions Complete 0.000007s
+Values ToArray Complete 0.000006s
+Complete 44.243489s
+Total 44.243691s
+```
+
+
+
 
 can we work with a CSV (List(List String)) with Lenses
 

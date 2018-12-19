@@ -3,56 +3,36 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
 module Lib where
 
--- import Prelude
-import Prelude hiding ((.), log, (!!))
+import Prelude hiding ((.), log, (!!), lines, readFile)
 import Control.Category ((<<<), (>>>))
--- import Data.Array (Array(..))
--- import Data.Array (index, snoc, nub, mapMaybe)
 import Data.Traversable (mapM)
--- import Data.Either (Either(..), either, hush)
 import Data.Either (rights, lefts)
 import Data.Either.Combinators (rightToMaybe)
-
-import Data.Foldable (foldl)
--- import qualified Data.Function as Function
--- import qualified Data.Int (fromString)
--- import Data.Map (Map)
--- import Data.Map as Map
+import Data.Foldable (foldl')
 import Data.HashMap.Lazy (HashMap, insert, lookup, elems)
-import qualified Data.HashMap.Lazy as HM
+import qualified Data.HashMap.Strict as HM
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
--- import qualified Data.Number (fromString)
--- import Data.String (Pattern(..))
--- import Data.String.Common (split)
 import Data.List (nub)
 import Data.List.Split (splitOn)
 import Data.Tuple ( fst)
--- import Data.Tuple.Nested (Tuple3, (/\))
--- import IO (Effect, foreachE)
--- import Effect.Console (log)
--- import Node.Encoding (Encoding(..))
--- import Node.FS.Sync (readTextFile)
-
--- import Control.Lens -- (Cons, Snoc, Ixed, Index, IxValue, (^?), ix, _head, _tail, _last, _init)
-import Control.Lens hiding ((<|), (|>))
+import Control.Lens hiding ((<|), (|>), from, to)
 import Control.Lens.TH (makeLenses, makePrisms)
 import Data.Maybe(Maybe)
-
-import System.IO
-
--- import Time (now)
-import Data.Time.Clock (getCurrentTime)
+import System.IO.Strict (readFile)
+import Data.Time.Clock (getCurrentTime, diffUTCTime)
 
 import Data
 
-
--- (<|) = ($)
--- infixr 0 <|
--- (|>) = flip ($)
--- infixl 0 |>
+(<|) :: (a -> b) -> a -> b
+(<|) = ($)
+infixr 0 <|
+(|>) :: a -> (a -> b) -> b
+(|>) = flip ($)
+infixl 0 |>
 
 --helps with dot notation
 -- https://ghc.haskell.org/trac/ghc/ticket/14812
@@ -61,11 +41,11 @@ import Data
 -- concatMap :: forall a b. (a -> [b]) -> [a] -> [b]
 -- concatMap = flip bind
 
-singleton :: forall a. a -> [a]
-singleton a = [a]
+-- singleton :: forall a. a -> [a]
+-- singleton a = [a]
 
-mapMaybe :: forall a b. (a -> Maybe b) -> [a] -> [b]
-mapMaybe f = concatMap (maybe [] singleton <<< f)
+-- mapMaybe :: forall a b. (a -> Maybe b) -> [a] -> [b]
+-- mapMaybe f = concatMap (maybe [] singleton <<< f)
 
 readMaybe :: Read a => String -> Maybe a
 readMaybe s = case reads s of
@@ -88,313 +68,273 @@ log = putStrLn
 
 -- |  To run:
 -- |  $ node -e "require('./output/Main').main()"
-main :: IO ()
-main = do
+run :: IO ()
+run = do
   log ""
 
---   tt0 <- getCurrentTime
---   accountsText <- readFile "accounts-1m.txt" 
---   tt1 <- getCurrentTime
---   log <| "Read Accounts Complete " <> (show <| tt1 - tt0)
---   transactionsText <- readFile "transactions-1m.txt"
---   tt2 <- getCurrentTime
---   log <| "Read Transactions Complete " <> (show <| tt2 - tt1)
+  tt0 <- getCurrentTime
+  accountsText <- readFile "accounts-1m.txt" 
+  tt1 <- getCurrentTime
+  log <| "Read Accounts Complete " <> (show <| diffUTCTime tt1  tt0)
+  transactionsText <- readFile "transactions-1m.txt"
+  tt2 <- getCurrentTime
+  log <| "Read Transactions Complete " <> (show <| diffUTCTime tt2 tt1)
 
---   let accounts = parseAccounts accountsText
---   tt3 <- getCurrentTime
---   log <| "Parse Accounts complete " <> (show <| tt3 - tt2)
+  let accounts = parseAccounts accountsText
+  tt3 <- getCurrentTime
+  log <| "Parse Accounts complete " <> (show <| diffUTCTime tt3 tt2)
   
---   let validAccounts = rights accounts
---   tt4 <- getCurrentTime
---   log <| "Accounts Right Complete " <> (show <| tt4 - tt3)
+  let validAccounts = rights accounts
+  tt4 <- getCurrentTime
+  log <| "Accounts Right Complete " <> (show <| diffUTCTime tt4 tt3)
   
---   let accountLookup = createAccountLookup validAccounts
---   tt5 <- getCurrentTime
---   log <| "Create Account Lookup complete " <> (show <| tt5 - tt4)
+  let accountLookup = createAccountLookup validAccounts
+  tt5 <- getCurrentTime
+  log <| "Create Account Lookup complete " <> (show <| diffUTCTime tt5 tt4)
   
---   let transactions = parseTransactions transactionsText
---   let validTransactions = rights transactions
---   tt6 <- getCurrentTime
---   log <| "Parse Transaction Complete " <> (show <| tt6 - tt5)
+  let transactions = parseTransactions transactionsText
+  let validTransactions = rights transactions
+  tt6 <- getCurrentTime
+  log <| "Parse Transaction Complete " <> (show <| diffUTCTime tt6 tt5)
   
---   let (errors, accountMap) = processTransactions accountLookup validTransactions
---   tt7 <- getCurrentTime
---   log <| "Process Transactions Complete " <> (show <| tt7 - tt6)
+  let (errors, acctMap) = processTransactions accountLookup validTransactions
+  tt7 <- getCurrentTime
+  log <| "Process Transactions Complete " <> (show <| diffUTCTime tt7 tt6)
 
---   let processedValues = elems accountMap
---   tt8 <- getCurrentTime
---   log <| "Values ToArray Complete " <> (show <| tt8 - tt7)
-
---   traverse ( show >>> log ) processedValues
---   tt9 <- getCurrentTime
-
---   log <| "Read Accounts Complete " <> (show <| tt1 - tt0)
---   log <| "Read Transactions Complete " <> (show <| tt2 - tt1)
---   log <| "Parse Accounts complete " <> (show <| tt3 - tt2)
---   log <| "Accounts Right Complete " <> (show <| tt4 - tt3)
---   log <| "Create Account Lookup complete " <> (show <| tt5 - tt4)
---   log <| "Parse Transaction Complete " <> (show <| tt6 - tt5)
---   log <| "Process Transactions Complete " <> (show <| tt7 - tt6)
---   log <| "Values ToArray Complete " <> (show <| tt8 - tt7)
---   log <| "Complete " <> (show <| tt9 - tt8)
---   log <| "Total " <> (show <| tt9 - tt0)
---   pure ()
+  let processedValues = elems acctMap
+  tt8 <- getCurrentTime
+  log <| "Values ToArray Complete " <> (show <| diffUTCTime tt8 tt7)
 
 
--- -- data Currency = USD | MXN | EUD | THB | GBP
--- --     deriving (Eq, Ord)
--- -- instance Show Currency where
--- --   show USD = "USD"
--- --   show MXN = "MXN"
--- --   show EUD = "EUD"
--- --   show THB = "THB"
--- --   show GBP = "GBP"
 
--- -- data Money = Money
--- --   { value :: Int
--- --   , currency :: Currency
--- --   }
+  traverse ( show >>> log ) processedValues
 
--- convert :: HashMap Currency (HashMap Currency Int) -> Money -> Currency -> Maybe Money
--- convert conversionRates money targetCurrency =
---   if currency money == targetCurrency
---   then Just <| money
---   else do
---     currencySpecificConversionRates <- HM.lookup (money.currency) conversionRates
---     conversionRate <- HM.lookup targetCurrency currencySpecificConversionRates
---     Just <| Money { value = money.value * conversionRate, currency= targetCurrency }
+  -- let newContents = map show processedValues
+  -- when (length newContents > 0) $
+  --   writeFile "file.txt" newContents
 
--- -- newtype AccountNumber = AccountNumber String
+  tt9 <- getCurrentTime
 
--- -- data Account = Account
--- --   { _accountNumber :: AccountNumber
--- --   , _balance :: Money
--- --   , _name :: String
--- --   }
--- -- makeLenses ''Account
+  log <| "Read Accounts Complete " <> (show <| diffUTCTime tt1 tt0)
+  log <| "Read Transactions Complete " <> (show <| diffUTCTime tt2 tt1)
+  log <| "Parse Accounts complete " <> (show <| diffUTCTime tt3 tt2)
+  log <| "Accounts Right Complete " <> (show <| diffUTCTime tt4 tt3)
+  log <| "Create Account Lookup complete " <> (show <| diffUTCTime tt5 tt4)
+  log <| "Parse Transaction Complete " <> (show <| diffUTCTime tt6 tt5)
+  log <| "Process Transactions Complete " <> (show <| diffUTCTime tt7 tt6)
+  log <| "Values ToArray Complete " <> (show <| diffUTCTime tt8 tt7)
+  log <| "Complete " <> (show <| diffUTCTime tt9 tt8)
+  log <| "Total " <> (show <| diffUTCTime tt9 tt0)
+  pure ()
 
--- -- data Transaction
--- --   = Bill 
--- --     { _accountNumber :: AccountNumber
--- --     , _amount :: Money
--- --     , _bucket :: String
--- --     }
--- --   | Payment
--- --     { _accountNumber :: AccountNumber
--- --     , _amount :: Money
--- --     , _source :: String
--- --     }
--- -- makePrisms ''Transaction
+conversionRates :: [(Currency, Currency, Rational)]
+conversionRates =
+    [ (USD, MXN, 1.5)
+    , (USD, EUD, 2.5) 
+    , (USD, THB, 3.5) 
+    , (USD, GBP, 4.5) 
+    , (MXN, EUD, 2.5) 
+    , (MXN, THB, 3.5) 
+    , (MXN, GBP, 4.5) 
+    , (EUD, THB, 3.5) 
+    , (EUD, GBP, 4.5) 
+    , (THB, GBP, 4.5) 
+    ]
 
+currencyConversionLookup :: HashMap Currency (HashMap Currency Rational)
+currencyConversionLookup = makeCurrencyConversionLookup conversionRates
 
--- -- When I try to run this theres a parse error. Any ideas? Do I need to do something special to turn on template haskell?
--- -- import Control.Lens.TH (makeLenses, makePrisms)
--- -- data Foo = Foo { a :: string }
--- -- makeLenses ''Foo
--- -- "Parse error: module header, import declaration or top-level declaration expected."
-
-
--- instance Show Transaction where
---   show (Bill {accountNumber, amount, bucket}) = 
---     "Bill - accountNumber: " 
---       <> (show accountNumber) 
---       <> ", amount: "
---       <> (show amount)
---       <> ", bucket: "
---       <> bucket
---   show (Payment {accountNumber, amount, source}) = 
---     "Bill - accountNumber: " 
---       <> (show accountNumber) 
---       <> ", amount: "
---       <> (show amount)
---       <> ", source: "
---       <> source
-
--- -- rights :: forall a b. [Either a b] -> [b]
--- -- rights array = mapMaybe hush array
-
--- -- lefts :: forall a b. [Either a b] -> [a]
--- -- lefts array = mapMaybe (either Just (const Nothing)) array
-
--- conversionRates :: [(Currency, Currency, Int)]
--- conversionRates =
---     [ (USD, MXN, 1.5)
---     , (USD, EUD, 2.5) 
---     , (USD, THB, 3.5) 
---     , (USD, GBP, 4.5) 
---     , (MXN, EUD, 2.5) 
---     , (MXN, THB, 3.5) 
---     , (MXN, GBP, 4.5) 
---     , (EUD, THB, 3.5) 
---     , (EUD, GBP, 4.5) 
---     , (THB, GBP, 4.5) 
---     ]
-
--- currencyConversionLookup :: HashMap Currency (HashMap Currency Int)
--- currencyConversionLookup = makeCurrencyConversionLookup conversionRates
-
--- makeCurrencyConversionLookup :: [(Currency, Currency, Int)] -> HashMap Currency (HashMap Currency Int)
--- makeCurrencyConversionLookup currencyMappings =
---   let
---     currencies :: [Currency]
---     currencies = nub <| Prelude.map fst currencyMappings <> map (\(a, b, c) -> b) currencyMappings
+makeCurrencyConversionLookup :: [(Currency, Currency, Rational)] -> HashMap Currency (HashMap Currency Rational)
+makeCurrencyConversionLookup currencyMappings =
+  let
+    currencies :: [Currency]
+    currencies = nub <| (Prelude.map (\(a, _, _) -> a) currencyMappings) <> map (\(_, b, _) -> b) currencyMappings
     
---     currencyLookup :: HashMap Currency (HashMap Currency Int)
---     currencyLookup = foldl (\accumulator currency -> HM.insert currency HM.empty accumulator) HM.empty currencies
+    currencyLookup :: HashMap Currency (HashMap Currency Rational)
+    currencyLookup = foldl' (\accumulator curr -> HM.insert curr HM.empty accumulator) HM.empty currencies
     
---     insertRateAndInverse :: HashMap Currency (HashMap Currency Int) -> (Currency, Currency, Int) -> Maybe (HashMap Currency (HashMap Currency Int))
---     insertRateAndInverse currencyMap (from, to, rate) = do  
---       fromCurrencyMap <- HM.lookup from currencyMap
---       toCurrencyMap <- HM.lookup to currencyMap
---       let newFromMap = HM.insert to rate fromCurrencyMap :: HashMap Currency Int
---       let newToMap = HM.insert from (1.0/rate) toCurrencyMap
+    insertRateAndInverse :: HashMap Currency (HashMap Currency Rational) -> (Currency, Currency, Rational) -> Maybe (HashMap Currency (HashMap Currency Rational))
+    insertRateAndInverse currencyMap (from, to, rate) = do  
+      -- lookup :: (Eq k, Hashable k) => k -> HashMap k v -> Maybe v
+      fromCurrencyMap <- HM.lookup from currencyMap
+      toCurrencyMap <- HM.lookup to currencyMap
+      let newFromMap = HM.insert to rate fromCurrencyMap :: HashMap Currency Rational
+      let newToMap = HM.insert from (1/rate) toCurrencyMap
 
---       HM.insert from newFromMap currencyMap
---         |> HM.insert to newToMap 
---         |> pure
---   in
---     foldl 
---     (\allMappings conversionRate -> 
---         fromMaybe allMappings (insertRateAndInverse allMappings conversionRate)
---     ) 
---     currencyLookup 
---     currencyMappings
+      HM.insert from newFromMap currencyMap
+        |> HM.insert to newToMap 
+        |> pure
+  in
+    foldl'
+    (\allMappings conversionRate -> 
+        fromMaybe allMappings (insertRateAndInverse allMappings conversionRate)
+    ) 
+    currencyLookup 
+    currencyMappings
 
--- account = Account { accountNumber = AccountNumber "123", balance = Money { value = 100.0, currency = USD}, name = "John Doe"}
--- payment = Payment { accountNumber = AccountNumber "123", amount = Money { value = 50.0, currency = USD}, source = "Online Payment"}
--- bill = Bill { accountNumber = AccountNumber "123", amount = Money { value = 25.0, currency = USD}, bucket = "Dues"}
+account :: Account
+account = Account (AccountNumber "123") (Money 100 USD) "John Doe"
+payment :: Transaction
+payment = Payment (AccountNumber "123") (Money 50 USD) "Online Payment"
+bill :: Transaction
+bill = Bill (AccountNumber "123") (Money 25 USD) "Dues"
 
--- accountMap = createAccountLookup [account]
--- transactionList = [payment, bill, payment]
+accountMap :: HashMap AccountNumber Account
+accountMap = createAccountLookup [account]
+transactionList :: [Transaction]
+transactionList = [payment, bill, payment]
       
 
--- parseAccounts :: String -> [Either String Account]
--- parseAccounts text =
---   let
---     lines = splitOn "\n" text
---     lineOrErrorMessage line = 
---       maybe 
---         (Left <| "Error parsing account line: " <> line) 
---         Right
---         (parseAccount line)
---   in
---     Prelude.map lineOrErrorMessage lines
+parseAccounts :: String -> [Either String Account]
+parseAccounts text =
+  let
+    lines = splitOn "\n" text
+    lineOrErrorMessage line = 
+      maybe 
+        (Left <| "Error parsing account line: " <> line) 
+        Right
+        (parseAccount line)
+  in
+    Prelude.map lineOrErrorMessage lines
 
--- parseAccount :: String -> Maybe Account
--- parseAccount text = do
---   let list = splitOn "|" text
---   a <- list !! 0
---   b <- list !! 1
---   name <- list !! 2
---   accountNumber <- getAccountNumber a
---   balance <- getAmount b
---   pure Account { accountNumber, balance, name }
+parseAccount :: String -> Maybe Account
+parseAccount text = do
+  let list = splitOn "|" text
+  a <- list !! 0
+  b <- list !! 1
+  name <- list !! 2
+  acctNum <- getAccountNumber a
+  balance <- getAmount b
+  pure $ Account acctNum balance name
   
--- getAccountNumber :: String -> Maybe AccountNumber
--- getAccountNumber s = do
---   num <- readMaybe s :: Maybe Int
---   pure (AccountNumber (show num))
---     -- >>= (show >>> pure)
---   -- this is the same thing using do notation instead of bind (aka >>=) directly
---   -- do
---   --   accountText <- index fields i
---   --   accountNumber <- DataInt.fromString accountText
---   --   pure <| show accountNumber
+getAccountNumber :: String -> Maybe AccountNumber
+getAccountNumber s = do
+  num <- readMaybe s :: Maybe Int
+  pure (AccountNumber (show num))
 
--- getAmount :: String -> Maybe Money
--- getAmount amountText = do
---   let amountParts = splitOn " " amountText
---   firstText <- amountParts !! 0
---   currencyText <- amountParts !! 1
---   value <- readMaybe firstText :: Maybe Int
---   currency <- parseCurrency currencyText
---   pure (Money {value, currency})
+getAmount :: String -> Maybe Money
+getAmount amountText = do
+  let amountParts = splitOn " " amountText
+  firstText <- amountParts !! 0
+  currencyText <- amountParts !! 1
+  val <- readMaybe firstText :: Maybe Int
+  currency' <- parseCurrency currencyText
+  pure $ Money val currency'
 
--- parseCurrency :: String -> Maybe Currency
--- parseCurrency "USD" = Just USD
--- parseCurrency "MXN" = Just MXN
--- parseCurrency "GBP" = Just GBP
--- parseCurrency "EUD" = Just EUD
--- parseCurrency "THB" = Just THB
--- parseCurrency _ = Nothing
+parseCurrency :: String -> Maybe Currency
+parseCurrency "USD" = Just USD
+parseCurrency "MXN" = Just MXN
+parseCurrency "GBP" = Just GBP
+parseCurrency "EUD" = Just EUD
+parseCurrency "THB" = Just THB
+parseCurrency _ = Nothing
 
--- parseTransactions :: String -> [Either String Transaction]
--- parseTransactions text =
---   let
---     lines = splitOn "\n" text
---     lineOrErrorMessage line = 
---       maybe 
---         (Left <| "Error parsing transaction line: " <> line)
---         Right
---         (parseTransaction line)
---   in
---     Prelude.map lineOrErrorMessage lines
+parseTransactions :: String -> [Either String Transaction]
+parseTransactions text =
+  let
+    lines = splitOn "\n" text
+    lineOrErrorMessage line = 
+      maybe 
+        (Left <| "Error parsing transaction line: " <> line)
+        Right
+        (parseTransaction line)
+  in
+    Prelude.map lineOrErrorMessage lines
 
--- parseTransaction :: String -> Maybe Transaction
--- parseTransaction text = do
---   let fields = splitOn "|" text
---   a <- fields !! 0
---   b <- fields !! 1
---   accountNumber <- getAccountNumber a
---   amount <- getAmount b
---   transtype <- fields !! 2
---   transDetails <- fields !! 3
---   case transtype of
---     "Bill" -> pure <| Bill { accountNumber, amount, bucket = transDetails}
---     "Payment" -> pure <| Payment { accountNumber, amount, source = transDetails}
---     _ -> Nothing
+parseTransaction :: String -> Maybe Transaction
+parseTransaction text = do
+  let fields = splitOn "|" text
+  a <- fields !! 0
+  b <- fields !! 1
+  acctNum <- getAccountNumber a
+  amt <- getAmount b
+  transtype <- fields !! 2
+  transDetails <- fields !! 3
+  case transtype of
+    "Bill" -> pure <| Bill acctNum amt transDetails
+    "Payment" -> pure <| Payment acctNum amt transDetails
+    _ -> Nothing
 
--- createAccountLookup :: [Account] -> HashMap AccountNumber Account
--- createAccountLookup accounts =
---   HM.fromList $ Prelude.map (\account -> (account.accountNumber, account)) accounts
+createAccountLookup :: [Account] -> HashMap AccountNumber Account
+createAccountLookup accts =
+  HM.fromList $ Prelude.map (\acct -> (acct^.accountNumber, acct)) accts
 
--- processTransactions :: HashMap AccountNumber Account -> [Transaction] -> ([String], (HashMap AccountNumber Account))
--- processTransactions accounts transactions =
---   let
---     getAccountNumber (Bill {accountNumber}) = accountNumber
---     getAccountNumber (Payment {accountNumber}) = accountNumber
+processTransactions :: HashMap AccountNumber Account -> [Transaction] -> ([String], (HashMap AccountNumber Account))
+processTransactions accounts transactions =
+  let
+    applyTransaction :: HashMap AccountNumber Account -> Transaction -> Maybe Account
+    applyTransaction accts transaction = do
+      acct <- HM.lookup (transaction^.accountNumber) accts
+      -- processTransaction currencyConversionLookup transaction acct
+      Just $ appl acct transaction
 
---     applyTransaction :: HashMap AccountNumber Account -> Transaction -> Maybe Account
---     applyTransaction accts transaction = do
---       acct <- HM.lookup (getAccountNumber transaction) accts
---       processTransaction currencyConversionLookup transaction acct
+    applyResult 
+      :: [String] 
+      -> HashMap AccountNumber Account 
+      -> Transaction 
+      -> Maybe Account 
+      -> ([String], (HashMap AccountNumber Account))
+    applyResult errors accts _ (Just acct) =
+      (errors, insert (acct^.accountNumber) acct accts)
+    applyResult errors accts trans Nothing =
+      (errors `snoc` ("Failed to process transaction: " <> show trans), accts)
 
---     applyResult 
---       :: [String] 
---       -> HashMap AccountNumber Account 
---       -> Transaction 
---       -> Maybe Account 
---       -> ([String], (HashMap AccountNumber Account))
---     applyResult errors accounts transaction (Just account) =
---       (errors, insert account.accountNumber account accounts)
---     applyResult errors accounts transaction Nothing =
---       (errors `snoc` ("Failed to process transaction: " <> show transaction), accounts)
+    buildResult 
+      :: ([String], (HashMap AccountNumber Account))
+      -> Transaction
+      -> ([String], (HashMap AccountNumber Account))
+    buildResult (errors, accts') transaction =
+      applyTransaction accts' transaction |>
+        applyResult errors accts' transaction
+  in 
+    foldl'
+      buildResult
+      ([], accounts)
+      transactions
 
---     buildResult 
---       :: ([String], (HashMap AccountNumber Account))
---       -> Transaction
---       -> ([String], (HashMap AccountNumber Account))
---     buildResult (errors, accounts) transaction =
---       applyTransaction accounts transaction |>
---         applyResult errors accounts transaction
+-- Add or subtract a transaction amount from account amount
+-- > appl a1 t1
+-- Account {_accountNumber = AccountNumber "345", _balance = 35 USD, _name = "Jorge"}
+-- > appl a1 t2
+-- Account {_accountNumber = AccountNumber "345", _balance = 10 USD, _name = "Jorge"}
+appl :: Account -> Transaction -> Account
+appl a t =
+  let
+    oper (Bill _ _ _) = addCurrency
+    oper (Payment _ _ _) = minusCurrency
+    newAcct = amount %~ (\bal -> oper t bal (t^.amount))
+  in
+    newAcct a
 
---   in 
---   foldl 
---     buildResult
---     ([], accounts)
---     transactions
+calcRate :: Currency -> Currency -> Int
+calcRate USD USD = 1
+calcRate THB USD = 2
+calcRate _   _   = 3
 
--- processTransaction :: HashMap Currency (HashMap Currency Int) -> Transaction -> Account -> Maybe Account
--- processTransaction currencyConversionLookup transaction account = do
---   let 
---     -- replace this with the 'amount' lens
---     transactionAmount = 
---       case transaction of
---         Bill { amount } -> amount
---         Payment { amount } -> amount
---     transactionOperation = 
---       case transaction of
---         Bill { amount } -> (_ + amount.amount)
---         Payment { amount } -> (_ - amount.amount)
---   rate <- convert currencyConversionLookup transactionAmount account.balance.currency
---   pure <| account { balance = account.balance { amount = transactionOperation account.balance.amount }}
+-- Convert from one currency to another
+-- > convert (Money 100 USD) USD
+-- Just 100 USD
+-- > convert (Money 100 USD) THB
+-- Just 200 USD
+convert :: Money -> Currency -> Money
+convert m c =
+  let 
+    rate = calcRate (m^.currency) c
+  in 
+    value *~ rate $ m
+
+-- > addCurrency (Money 100 USD) (Money 150 THB)
+-- 400 THB
+addCurrency :: Money -> Money -> Money
+addCurrency m1 m2 =
+  let
+    newM2 = convert m2 (m1^.currency)
+  in
+    value %~ (\a -> m1^.value + a) $ newM2
+
+minusCurrency :: Money -> Money -> Money
+minusCurrency m1 m2 =
+  let
+    newM2 = convert m2 (m1^.currency)
+  in
+    value %~ (\a -> m1^.value - a ) $ newM2

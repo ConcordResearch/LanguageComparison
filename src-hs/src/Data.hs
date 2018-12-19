@@ -3,6 +3,7 @@
 {-# LANGUAGE TemplateHaskell        #-}
 {-# LANGUAGE DuplicateRecordFields  #-}
 {-# LANGUAGE NoImplicitPrelude      #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 {-# LANGUAGE TypeSynonymInstances   #-}
 {-# LANGUAGE FlexibleInstances   #-}
@@ -11,23 +12,16 @@
 
 module Data where
 
-import Prelude --(Show, String, Int)
+import Prelude
 import Control.Lens
+import GHC.Generics (Generic)
+import Data.Hashable (Hashable)
 
--- data Point = Point {
---     _x :: Float,
---     _y :: Float
--- }
--- makeClassy ''Point
-
--- ff :: Point
--- ff = Point 5.0 6.1
-
--- gg :: Point
--- gg = set x 2.0 ff
 
 data Currency = USD | MXN | EUD | THB | GBP
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Generic)
+instance Hashable Currency 
+
 instance Show Currency where
   show USD = "USD"
   show MXN = "MXN"
@@ -43,13 +37,16 @@ instance Show Money where
   show c = (show $ _value c) <> " " <> (show $ _currency c) 
 
 newtype AccountNumber = AccountNumber String
-  deriving (Show)
+  deriving (Eq, Ord, Show, Generic)
+instance Hashable AccountNumber
 
 data Account = Account
   { _accountNumber :: AccountNumber
   , _balance :: Money
   , _name :: String
   }
+  deriving (Show)
+
 
 data Transaction
   = Bill 
@@ -62,12 +59,27 @@ data Transaction
     , _amount :: Money
     , _source :: String
     }
+instance Show Transaction where
+  show (Bill acctNum amt bucket) = 
+    "Bill - accountNumber: " 
+      <> (show acctNum) 
+      <> ", amount: "
+      <> (show amt)
+      <> ", bucket: "
+      <> bucket
+  show (Payment acctNum amt source) = 
+    "Bill - accountNumber: " 
+      <> (show acctNum) 
+      <> ", amount: "
+      <> (show amt)
+      <> ", source: "
+      <> source
 
 a1 :: Account
 a1 = Account
   { _accountNumber = AccountNumber "345"
   , _balance = Money
-    { _value = 102
+    { _value = 25
     , _currency = USD
     }
   , _name = "Jorge"
@@ -77,7 +89,7 @@ t1 :: Transaction
 t1 = Bill 
   { _accountNumber = AccountNumber "123"
   , _amount = Money
-    { _value = 52
+    { _value = 10
     , _currency = USD
     }
   , _bucket = "Bill"
@@ -87,7 +99,7 @@ t2 :: Transaction
 t2 = Payment
   { _accountNumber = AccountNumber "234"
   , _amount = Money
-    { _value = 432
+    { _value = 15
     , _currency = USD
     }
   , _source = "Online Payment"
@@ -95,23 +107,23 @@ t2 = Payment
 
 
 
--- | Example Code
--- Try:
+-- -- | Example Code
+-- -- Try:
 
--- > (Foo 5) ^. x
--- 5
--- > x .~ 10 $ Foo 6
--- Foo {_x = 10}
-data FooBar =
-    Foo { _x :: Int}
-  | Bar { _x :: Int}
-  deriving (Show)
+-- -- > (Foo 5) ^. x
+-- -- 5
+-- -- > x .~ 10 $ Foo 6
+-- -- Foo {_x = 10}
+-- data FooBar =
+--     Foo { _x :: Int}
+--   | Bar { _x :: Int}
+--   deriving (Show)
 
-class HasX t where
-  x :: Lens' t Int
-instance HasX FooBar where
-  x f (Foo x) = (\x' -> Foo x') <$> f x
-  x f (Bar x) = (\x' -> Bar x') <$> f x
+-- class HasX t where
+--   x :: Lens' t Int
+-- instance HasX FooBar where
+--   x f (Foo x) = (\x' -> Foo x') <$> f x
+--   x f (Bar x) = (\x' -> Bar x') <$> f x
 
 
 
@@ -148,64 +160,8 @@ value :: Lens' Money Int
 value f (Money v c) =
   (\a' -> Money { _value = a', _currency = c } )
     <$> f v
+currency :: Lens' Money Currency
+currency f (Money v c) =
+  (\a' -> Money { _value = v, _currency = a' } )
+    <$> f c
 
-    
-
-
--- Convert from one currency to another
--- > convert (Money 100 USD) USD
--- Just 100 USD
--- > convert (Money 100 USD) THB
--- Just 200 USD
-convert :: Money -> Currency -> Maybe Money
-convert m c =
-  if _currency m == c
-  then Just m
-  else do
-    Just $ value %~ (\v -> v * 2) $ m
-
-
--- add or subtract a transaction amount from account amount
--- appl :: Account -> Transaction -> Transaction
-
-
--- amount :: Lens' Transaction Money
--- amount f t =
---   (\a' -> Bill { _accountNumber = _accountNumber t, _amount = a', _bucket = _bucket t } )
---     <$> f (_accountNumber t)
-
-
-
--- makeClassy ''Money
--- makeClassy ''Account
--- makePrisms ''Transaction
--- makeFields ''Transaction
-
--- makeFieldsNoPrefix ''Money
--- makeFieldsNoPrefix ''Account
--- makeFieldsNoPrefix ''Transaction
-
-
--- getAccountNumber :: Account -> AccountNumber
--- getAccountNumber acct = view accountNumber acct
-
--- changeAccountName :: String -> Account -> Account
--- changeAccountName n a =
---   over name (const n) a
-
---change the accountName
-
-
-
--- addOneToTransaction :: Account -> Account
--- addOneToTransaction a = over (balance . value) (+1) a
-
--- addMoneyToTransaction :: Money -> Transaction -> Transaction
--- addMoneyToTransaction m t =
---   over (amount) (\mm -> (view amount mm) + (view amount m)) t
-
--- hh :: Transaction -> Money
--- hh transaction =
---   case transaction of
---     Bill { amount = a } -> (_ + a.amount)
---     Payment { amount = a } -> (_ - a.amount)
