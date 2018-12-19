@@ -4,7 +4,7 @@
 {-# LANGUAGE DuplicateRecordFields  #-}
 {-# LANGUAGE NoImplicitPrelude      #-}
 {-# LANGUAGE DeriveGeneric #-}
-
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeSynonymInstances   #-}
 {-# LANGUAGE FlexibleInstances   #-}
 
@@ -16,6 +16,7 @@ import Prelude
 import Control.Lens
 import GHC.Generics (Generic)
 import Data.Hashable (Hashable)
+import Data.Text (Text)
 
 
 data Currency = USD | MXN | EUD | THB | GBP
@@ -36,28 +37,27 @@ data Money = Money
 instance Show Money where
   show c = (show $ _value c) <> " " <> (show $ _currency c) 
 
-newtype AccountNumber = AccountNumber String
+newtype AccountNumber = AccountNumber Text
   deriving (Eq, Ord, Show, Generic)
 instance Hashable AccountNumber
 
 data Account = Account
   { _accountNumber :: AccountNumber
   , _balance :: Money
-  , _name :: String
+  , _name :: Text
   }
   deriving (Show)
-
 
 data Transaction
   = Bill 
     { _accountNumber :: AccountNumber
     , _amount :: Money
-    , _bucket :: String
+    , _bucket :: Text
     }
   | Payment
     { _accountNumber :: AccountNumber
     , _amount :: Money
-    , _source :: String
+    , _source :: Text
     }
 instance Show Transaction where
   show (Bill acctNum amt bucket) = 
@@ -66,14 +66,14 @@ instance Show Transaction where
       <> ", amount: "
       <> (show amt)
       <> ", bucket: "
-      <> bucket
+      <> show bucket
   show (Payment acctNum amt source) = 
     "Bill - accountNumber: " 
       <> (show acctNum) 
       <> ", amount: "
       <> (show amt)
       <> ", source: "
-      <> source
+      <> show source
 
 a1 :: Account
 a1 = Account

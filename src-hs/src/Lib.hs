@@ -3,11 +3,14 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE OverloadedStrings #-}
+
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
 module Lib where
 
-import Prelude hiding ((.), log, (!!), lines, readFile)
+import Prelude hiding (show, log, (!!), lines, readFile)
+import qualified Prelude
 import Control.Category ((<<<), (>>>))
 import Data.Traversable (mapM)
 import Data.Either (rights, lefts)
@@ -17,12 +20,16 @@ import Data.HashMap.Lazy (HashMap, insert, lookup, elems)
 import qualified Data.HashMap.Strict as HM
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.List (nub)
-import Data.List.Split (splitOn)
+import Data.Text (Text, splitOn, unpack, pack)
+import Data.Text.IO (readFile)
+-- import Text.Read (readMay)
+import qualified Text.Read
+
+
 import Data.Tuple ( fst)
 import Control.Lens hiding ((<|), (|>), from, to)
 import Control.Lens.TH (makeLenses, makePrisms)
 import Data.Maybe(Maybe)
-import System.IO.Strict (readFile)
 import Data.Time.Clock (getCurrentTime, diffUTCTime)
 
 import Data
@@ -47,10 +54,18 @@ infixl 0 |>
 -- mapMaybe :: forall a b. (a -> Maybe b) -> [a] -> [b]
 -- mapMaybe f = concatMap (maybe [] singleton <<< f)
 
-readMaybe :: Read a => String -> Maybe a
-readMaybe s = case reads s of
-                  [(val, "")] -> Just val
-                  _           -> Nothing
+-- readMaybe :: Read a => String -> Maybe a
+-- readMaybe s = case reads s of
+--                   [(val, "")] -> Just val
+--                   _           -> Nothing
+
+-- https://hackage.haskell.org/package/basic-prelude-0.7.0/docs/src/BasicPrelude.html#readMay
+readMay :: Read a => Text -> Maybe a
+readMay = Text.Read.readMaybe . unpack
+
+-- https://hackage.haskell.org/package/basic-prelude-0.7.0/docs/src/BasicPrelude.html#tshow
+show :: Show a => a -> Text
+show = pack . Prelude.show
 
 -- https://github.com/qfpl/papa/blob/536b0a9243802347c299e077b5d85beb80d3a4a1/papa-lens-implement/src/Papa/Lens/Implement/Data/List.hs
 (!!) ::
@@ -63,8 +78,10 @@ q !! n =
 
 infixl 9 !!
 
-log :: String -> IO ()
-log = putStrLn
+log :: Text -> IO ()
+log = Prelude.show >>> putStrLn
+
+
 
 -- |  To run:
 -- |  $ node -e "require('./output/Main').main()"
@@ -73,10 +90,10 @@ run = do
   log ""
 
   tt0 <- getCurrentTime
-  accountsText <- readFile "accounts-1m.txt" 
+  accountsText <- readFile "../accounts-100k.txt" 
   tt1 <- getCurrentTime
   log <| "Read Accounts Complete " <> (show <| diffUTCTime tt1  tt0)
-  transactionsText <- readFile "transactions-1m.txt"
+  transactionsText <- readFile "../transactions-100k.txt"
   tt2 <- getCurrentTime
   log <| "Read Transactions Complete " <> (show <| diffUTCTime tt2 tt1)
 
@@ -183,9 +200,8 @@ accountMap :: HashMap AccountNumber Account
 accountMap = createAccountLookup [account]
 transactionList :: [Transaction]
 transactionList = [payment, bill, payment]
-      
 
-parseAccounts :: String -> [Either String Account]
+parseAccounts :: Text -> [Either Text Account]
 parseAccounts text =
   let
     lines = splitOn "\n" text
@@ -197,31 +213,40 @@ parseAccounts text =
   in
     Prelude.map lineOrErrorMessage lines
 
-parseAccount :: String -> Maybe Account
+toMaybeTuple :: [a] -> Maybe (a,a)
+toMaybeTuple [a,b] = Just (a,b)
+toMaybeTuple _ = Nothing
+
+toMaybeTuple3 :: [a] -> Maybe (a,a,a)
+toMaybeTuple3 [a,b,c] = Just (a,b,c)
+toMaybeTuple3 _ = Nothing
+
+toMaybeTuple4 :: [a] -> Maybe (a,a,a,a)
+toMaybeTuple4 [a,b,c,d] = Just (a,b,c,d)
+toMaybeTuple4 _ = Nothing
+
+parseAccount :: Text -> Maybe Account
 parseAccount text = do
-  let list = splitOn "|" text
-  a <- list !! 0
-  b <- list !! 1
-  name <- list !! 2
+  (a,b,name) <- toMaybeTuple3 $ splitOn "|" text
   acctNum <- getAccountNumber a
   balance <- getAmount b
-  pure $ Account acctNum balance name
+  pure $! Account acctNum balance name
   
-getAccountNumber :: String -> Maybe AccountNumber
+getAccountNumber :: Text -> Maybe AccountNumber
 getAccountNumber s = do
-  num <- readMaybe s :: Maybe Int
-  pure (AccountNumber (show num))
+  num <- readMay s :: Maybe Int
+  pure $ (AccountNumber (show num))
 
-getAmount :: String -> Maybe Money
+getAmount :: Text -> Maybe Money
 getAmount amountText = do
-  let amountParts = splitOn " " amountText
-  firstText <- amountParts !! 0
-  currencyText <- amountParts !! 1
-  val <- readMaybe firstText :: Maybe Int
+  (firstText, currencyText) <- toMaybeTuple $ splitOn " " amountText
+  -- firstText <- amountParts !! 0
+  -- currencyText <- amountParts !! 1
+  val <- readMay firstText :: Maybe Int
   currency' <- parseCurrency currencyText
   pure $ Money val currency'
 
-parseCurrency :: String -> Maybe Currency
+parseCurrency :: Text -> Maybe Currency
 parseCurrency "USD" = Just USD
 parseCurrency "MXN" = Just MXN
 parseCurrency "GBP" = Just GBP
@@ -229,7 +254,7 @@ parseCurrency "EUD" = Just EUD
 parseCurrency "THB" = Just THB
 parseCurrency _ = Nothing
 
-parseTransactions :: String -> [Either String Transaction]
+parseTransactions :: Text -> [Either Text Transaction]
 parseTransactions text =
   let
     lines = splitOn "\n" text
@@ -241,25 +266,21 @@ parseTransactions text =
   in
     Prelude.map lineOrErrorMessage lines
 
-parseTransaction :: String -> Maybe Transaction
+parseTransaction :: Text -> Maybe Transaction
 parseTransaction text = do
-  let fields = splitOn "|" text
-  a <- fields !! 0
-  b <- fields !! 1
+  (a,b,transtype,transDetails) <- toMaybeTuple4 $ splitOn "|" text
   acctNum <- getAccountNumber a
   amt <- getAmount b
-  transtype <- fields !! 2
-  transDetails <- fields !! 3
   case transtype of
     "Bill" -> pure $! Bill acctNum amt transDetails
-    "Payment" -> pure <| Payment acctNum amt transDetails
+    "Payment" -> pure $! Payment acctNum amt transDetails
     _ -> Nothing
 
 createAccountLookup :: [Account] -> HashMap AccountNumber Account
 createAccountLookup accts =
   HM.fromList $! Prelude.map (\acct -> (acct^.accountNumber, acct)) accts
 
-processTransactions :: HashMap AccountNumber Account -> [Transaction] -> ([String], (HashMap AccountNumber Account))
+processTransactions :: HashMap AccountNumber Account -> [Transaction] -> ([Text], (HashMap AccountNumber Account))
 processTransactions accounts transactions =
   let
     applyTransaction :: HashMap AccountNumber Account -> Transaction -> Maybe Account
@@ -269,20 +290,20 @@ processTransactions accounts transactions =
       Just $! appl acct transaction
 
     applyResult 
-      :: [String] 
+      :: [Text] 
       -> HashMap AccountNumber Account 
       -> Transaction 
       -> Maybe Account 
-      -> ([String], (HashMap AccountNumber Account))
+      -> ([Text], (HashMap AccountNumber Account))
     applyResult errors accts _ (Just acct) =
       (errors, insert (acct^.accountNumber) acct accts)
     applyResult errors accts trans Nothing =
       (("Failed to process transaction: " <> show trans) : errors, accts)
 
     buildResult 
-      :: ([String], (HashMap AccountNumber Account))
+      :: ([Text], (HashMap AccountNumber Account))
       -> Transaction
-      -> ([String], (HashMap AccountNumber Account))
+      -> ([Text], (HashMap AccountNumber Account))
     buildResult (errors, accts') transaction =
       applyTransaction accts' transaction |>
         applyResult errors accts' transaction

@@ -27,6 +27,9 @@ dependencies:
 - time
 - split
 - lens
+- hashable
+- strict
+- text
 
 library:
   source-dirs: src
