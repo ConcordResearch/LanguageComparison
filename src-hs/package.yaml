@@ -30,6 +30,7 @@ dependencies:
 - hashable
 - strict
 - text
+- attoparsec
 
 library:
   source-dirs: src
