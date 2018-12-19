@@ -6,15 +6,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="accounts-1m.txt" />
-    <None Remove="transactions-1m.txt" />
+    <None Remove="../accounts-100k.txt" />
+    <None Remove="../transactions-100k.txt" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="accounts-1m.txt">
+    <Content Include="../accounts-100k.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="transactions-1m.txt">
+    <Content Include="../transactions-100k.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

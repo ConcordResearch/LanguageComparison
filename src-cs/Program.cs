@@ -32,9 +32,9 @@ namespace CSharpPerfEval
             
             var reader = new FileReader();
 
-            var accounts = new AccountParser().ParseFile(reader.ReadFile("./accounts-1m.txt"));
+            var accounts = new AccountParser().ParseFile(reader.ReadFile("../accounts-100k.txt"));
             Console.WriteLine("AccountParser complete");
-            var transactions = new TransactionParser().ParseFile(reader.ReadFile("./transactions-1m.txt"));
+            var transactions = new TransactionParser().ParseFile(reader.ReadFile("../transactions-100k.txt"));
             Console.WriteLine("AccountParser complete");
 
             var processor = new Processor(converter, accounts, transactions);
