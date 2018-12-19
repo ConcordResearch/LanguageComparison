@@ -20,6 +20,15 @@ Total 44.243691s
 
 can we work with a CSV (List(List String)) with Lenses
 
+
+## Perf
+
+blog posts by a chap named 'neil mitchell' are always awesome when it comes to haskell perf debugging, there are lots of useful bits here https://wiki.haskell.org/Performance
+11:15 PM matt parsons has some good stuff too https://www.parsonsmatt.org/2017/12/18/haskell_performance_debugging.html
+
+https://stackoverflow.com/questions/32123475/profiling-builds-with-stack
+
+
 ## Lenses
 
 

@@ -31,7 +31,7 @@ import Data
 (<|) = ($)
 infixr 0 <|
 (|>) :: a -> (a -> b) -> b
-(|>) = flip ($)
+(|>) = (&)
 infixl 0 |>
 
 --helps with dot notation
@@ -251,13 +251,13 @@ parseTransaction text = do
   transtype <- fields !! 2
   transDetails <- fields !! 3
   case transtype of
-    "Bill" -> pure <| Bill acctNum amt transDetails
+    "Bill" -> pure $! Bill acctNum amt transDetails
     "Payment" -> pure <| Payment acctNum amt transDetails
     _ -> Nothing
 
 createAccountLookup :: [Account] -> HashMap AccountNumber Account
 createAccountLookup accts =
-  HM.fromList $ Prelude.map (\acct -> (acct^.accountNumber, acct)) accts
+  HM.fromList $! Prelude.map (\acct -> (acct^.accountNumber, acct)) accts
 
 processTransactions :: HashMap AccountNumber Account -> [Transaction] -> ([String], (HashMap AccountNumber Account))
 processTransactions accounts transactions =
@@ -266,7 +266,7 @@ processTransactions accounts transactions =
     applyTransaction accts transaction = do
       acct <- HM.lookup (transaction^.accountNumber) accts
       -- processTransaction currencyConversionLookup transaction acct
-      Just $ appl acct transaction
+      Just $! appl acct transaction
 
     applyResult 
       :: [String] 
@@ -277,7 +277,7 @@ processTransactions accounts transactions =
     applyResult errors accts _ (Just acct) =
       (errors, insert (acct^.accountNumber) acct accts)
     applyResult errors accts trans Nothing =
-      (errors `snoc` ("Failed to process transaction: " <> show trans), accts)
+      (("Failed to process transaction: " <> show trans) : errors, accts)
 
     buildResult 
       :: ([String], (HashMap AccountNumber Account))
