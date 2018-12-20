@@ -1,6 +1,8 @@
 use std::fs;
 use std::collections::HashMap;
 use std::str::FromStr;
+use std::fs::File;
+use std::io::{BufWriter, Write};
 
 #[derive(PartialEq, Eq, Hash, PartialOrd, Ord, Copy, Clone, Debug)]
 enum Currency {
@@ -54,8 +56,8 @@ enum Transaction {
 
 fn main() -> Result<(), std::io::Error> {
     // the ? is quasi doing what <- does in a do block
-    let accounts_text = fs::read_to_string("../accounts.txt")?;
-    let transactions_text = fs::read_to_string("../transactions.txt")?;
+    let accounts_text = fs::read_to_string("../accounts1.2m.txt")?;
+    let transactions_text = fs::read_to_string("../transactions1m.txt")?;
 
     let conversion_rates = build_conversion_rates(&[
         (Currency::USD, Currency::MXN, 1.5),
@@ -71,30 +73,31 @@ fn main() -> Result<(), std::io::Error> {
     ]);
 
     let mut account_lookup = parse_accounts(&accounts_text);
-    // account_lookup
-    //     .iter()
-    //     .for_each(|e| println!("{:?}", e));
 
     let transactions_lookup = parse_transactions(&transactions_text);
     process_transactions(&mut account_lookup, &conversion_rates, &transactions_lookup);
 
+    let mut file = File::create("output.txt")?;
+
+    
+    let mut buffer = BufWriter::new(file);
+    
     account_lookup
         .iter()
-        .for_each(|e| println!("{:?}", e));
+        .for_each(|(_,v)| {
+            buffer.write_all(format!("{:?}", v).as_bytes());
+        });
     
-    // transactions_lookup
-    //     .iter()
-    //     .for_each(|e| println!("{:?}", e));
-    
+    println!("Done");
 
     Ok(())
 }
 
 // borrow the array as a slice and return the HashMap for looking up rates
-fn build_conversion_rates(baseRates : &[(Currency, Currency, f32)]) -> HashMap<Currency, HashMap<Currency, f32>> {
+fn build_conversion_rates(base_rates : &[(Currency, Currency, f32)]) -> HashMap<Currency, HashMap<Currency, f32>> {
     let mut map = HashMap::new();
 
-    baseRates
+    base_rates
         .iter()
         .for_each(|(first_currency, second_currency, rate)| {
             let mappings_for_first_currency = map.entry(first_currency.clone()).or_insert(HashMap::new());
@@ -242,10 +245,6 @@ fn apply_transaction(account : &Account, transaction : &Transaction, currency_co
     let target_rate = conversion_rates.get(&account.balance.currency)?;
 
     let new_balance = apply_money(&account.balance, transaction_amount * target_rate);
-
-    if account.account_number == "10096" {
-        println!("{:?}", account);
-    }
 
     Some(Account { balance: new_balance, ..account.clone()})
 }
