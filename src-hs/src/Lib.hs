@@ -24,6 +24,7 @@ import Data.Text (Text, splitOn, unpack, pack)
 import Data.Text.IO (readFile)
 -- import Text.Read (readMay)
 import qualified Text.Read
+import qualified Data.Attoparsec.Text as Attoparsec
 
 
 import Data.Tuple ( fst)
@@ -63,6 +64,13 @@ infixl 0 |>
 readMay :: Read a => Text -> Maybe a
 readMay = Text.Read.readMaybe . unpack
 
+tryParseInt :: Text -> Maybe Int
+tryParseInt text = 
+  case Attoparsec.parseOnly Attoparsec.double text of
+    Right r -> Just $ (Prelude.round r :: Int)
+    _ -> Nothing
+
+
 -- https://hackage.haskell.org/package/basic-prelude-0.7.0/docs/src/BasicPrelude.html#tshow
 show :: Show a => a -> Text
 show = pack . Prelude.show
@@ -82,7 +90,6 @@ log :: Text -> IO ()
 log = Prelude.show >>> putStrLn
 
 
-
 -- |  To run:
 -- |  $ node -e "require('./output/Main').main()"
 run :: IO ()
@@ -90,10 +97,10 @@ run = do
   log ""
 
   tt0 <- getCurrentTime
-  accountsText <- readFile "../accounts-100k.txt" 
+  accountsText <- readFile "../accounts-1M.txt" 
   tt1 <- getCurrentTime
   log <| "Read Accounts Complete " <> (show <| diffUTCTime tt1  tt0)
-  transactionsText <- readFile "../transactions-100k.txt"
+  transactionsText <- readFile "../transactions-1M.txt"
   tt2 <- getCurrentTime
   log <| "Read Transactions Complete " <> (show <| diffUTCTime tt2 tt1)
 
@@ -118,17 +125,12 @@ run = do
   tt7 <- getCurrentTime
   log <| "Process Transactions Complete " <> (show <| diffUTCTime tt7 tt6)
 
-  let processedValues = elems acctMap
+  -- let processedValues = elems acctMap
   tt8 <- getCurrentTime
   log <| "Values ToArray Complete " <> (show <| diffUTCTime tt8 tt7)
 
-
-
-  traverse ( show >>> log ) processedValues
-
-  -- let newContents = map show processedValues
-  -- when (length newContents > 0) $
-  --   writeFile "file.txt" newContents
+  mapM_ putStrLn $ map Prelude.show $ elems acctMap
+  -- traverse ( show >>> log ) processedValues
 
   tt9 <- getCurrentTime
 
@@ -234,7 +236,7 @@ parseAccount text = do
   
 getAccountNumber :: Text -> Maybe AccountNumber
 getAccountNumber s = do
-  num <- readMay s :: Maybe Int
+  num <- tryParseInt s :: Maybe Int
   pure $ (AccountNumber (show num))
 
 getAmount :: Text -> Maybe Money
@@ -242,7 +244,7 @@ getAmount amountText = do
   (firstText, currencyText) <- toMaybeTuple $ splitOn " " amountText
   -- firstText <- amountParts !! 0
   -- currencyText <- amountParts !! 1
-  val <- readMay firstText :: Maybe Int
+  val <- tryParseInt firstText :: Maybe Int
   currency' <- parseCurrency currencyText
   pure $ Money val currency'
 
