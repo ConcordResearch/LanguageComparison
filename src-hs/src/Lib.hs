@@ -90,7 +90,6 @@ log :: Text -> IO ()
 log = Prelude.show >>> putStrLn
 
 
-
 -- |  To run:
 -- |  $ node -e "require('./output/Main').main()"
 run :: IO ()
@@ -126,15 +125,12 @@ run = do
   tt7 <- getCurrentTime
   log <| "Process Transactions Complete " <> (show <| diffUTCTime tt7 tt6)
 
-  let processedValues = elems acctMap
+  -- let processedValues = elems acctMap
   tt8 <- getCurrentTime
   log <| "Values ToArray Complete " <> (show <| diffUTCTime tt8 tt7)
 
-  traverse ( show >>> log ) processedValues
-
-  -- let newContents = map show processedValues
-  -- when (length newContents > 0) $
-  --   writeFile "file.txt" newContents
+  mapM_ putStrLn $ map Prelude.show $ elems acctMap
+  -- traverse ( show >>> log ) processedValues
 
   tt9 <- getCurrentTime
 
