@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Transactions;
+using System.IO;
 
 namespace CSharpPerfEval
 {
@@ -8,11 +9,6 @@ namespace CSharpPerfEval
     {
         static void Main(string[] args)
         {
-            //USD,
-            //MXN,
-            //EUD,
-            //THB,
-            //GBP
             var testExchangeData = new List<ExchangeRate>()
             {
                 new ExchangeRate(Currency.USD, Currency.MXN, 1.5),
@@ -36,59 +32,21 @@ namespace CSharpPerfEval
 
             var reader = new FileReader();
 
-            var accounts = new AccountParser().ParseFile(reader.ReadFile("../accounts-100k.txt"));
-            Console.WriteLine("AccountParser complete");
-            var transactions = new TransactionParser().ParseFile(reader.ReadFile("../transactions-100k.txt"));
-            Console.WriteLine("AccountParser complete");
-
-
-
-
-            //var accounts = new List<Account>()
-            //{
-            //    new Account() { AccountNumber = "12345", BalanceAmount = 100d, BalanceCurrency = Currency.EUD, Name = "Joe Smith" },
-            //    new Account() { AccountNumber = "12346", BalanceAmount = 200d, BalanceCurrency = Currency.MXN, Name = "Joe Smyth" },
-            //    new Account() { AccountNumber = "12347", BalanceAmount = 300d, BalanceCurrency = Currency.GBP, Name = "Joe Herrera" },
-            //    new Account() { AccountNumber = "12348", BalanceAmount = 400d, BalanceCurrency = Currency.USD, Name = "Joe Paramo" },
-            //    new Account() { AccountNumber = "12349", BalanceAmount = 500d, BalanceCurrency = Currency.EUD, Name = "Joe Gutierrez" },
-            //    new Account() { AccountNumber = "12350", BalanceAmount = 600d, BalanceCurrency = Currency.GBP, Name = "Joe Dominquez" },
-            //    new Account() { AccountNumber = "12351", BalanceAmount = 700d, BalanceCurrency = Currency.THB, Name = "Joe Perez" }
-            //};
-
-            //var transactions = new List<Transaction>() {
-            //    new Bill(){ AccountNumber="12345", Amount= 200d, Bucket="Dues", Currency= Currency.EUD },
-            //    new Bill(){ AccountNumber="12346", Amount= 100d, Bucket="Dues", Currency= Currency.GBP },
-
-            //    new Payment(){ AccountNumber="12345", Amount= 100d, Source="Online Payment", Currency= Currency.EUD},
-            //    new Payment(){ AccountNumber="12345", Amount= 100d, Source="Online Payment", Currency= Currency.EUD },
-            //    new Payment(){ AccountNumber="12346", Amount= 15d, Source="Online Payment", Currency= Currency.MXN },
-            //};
+            var accounts = new AccountParser().ParseFile(reader.ReadFile("../accounts1.2m.txt"));
+            var transactions = new TransactionParser().ParseFile(reader.ReadFile("../transactions1m.txt"));
+            
             var processor = new Processor(converter, accounts, transactions);
-
-            //accounts.ForEach(a => Console.WriteLine($"Account: {a.AccountNumber}, Balance: {a.BalanceAmount}, {a.BalanceCurrency.ToString()}"));
 
             processor.Process();
 
-                        foreach (var account in accounts)
-            {
-                Console.WriteLine(account);
+            using (var file = new StreamWriter("output.txt")) {
+                foreach (var account in accounts)
+                {
+                    file.WriteLine(account.Value);
+                }
             }
 
-            //accounts.ForEach(a => Console.WriteLine($"Account: {a.AccountNumber}, Balance: {a.BalanceAmount}, {a.BalanceCurrency.ToString()}"));
-
-
-
-            //foreach (var test in testExchangeData)
-            //{
-            //    var fromTo = converter.Convert(test.From, test.To, 1);
-            //    var toFrom = converter.Convert(test.To, test.From, 1);
-            //    Console.WriteLine($"From: {test.From} To: {test.To} Result: {fromTo}");
-            //    Console.WriteLine($"From: {test.To} To: {test.From} Result: {toFrom}");
-            //    Console.WriteLine("------------------");
-            //}
-
-            //Console.ReadLine();
-
+            Console.WriteLine("Done");
         }
     }
 
@@ -189,11 +147,11 @@ namespace CSharpPerfEval
     public class Processor
     {
         CurrencyConverter _converter;
-        List<Account> accounts;
+        Dictionary<String, Account> accounts;
         List<Transaction> transactions;
         
 
-        public Processor(CurrencyConverter converter, List<Account> accounts, List<Transaction> transactions)
+        public Processor(CurrencyConverter converter, Dictionary<String, Account> accounts, List<Transaction> transactions)
         {
             _converter = converter;
             this.accounts = accounts;
@@ -216,9 +174,8 @@ namespace CSharpPerfEval
 
             foreach(var kvp in transactionsForAccount)
             {
-                var account =  accounts.Find(acc => acc.AccountNumber == kvp.Key);
-                if (account != null)
-                {
+                Account account;
+                if(accounts.TryGetValue(kvp.Key, out account)) {
                     foreach (var trans in kvp.Value)
                     {
                         ApplyTransactionToAccount(account, trans);
@@ -324,16 +281,16 @@ namespace CSharpPerfEval
    
     public class AccountParser
     {
-        public List<Account> ParseFile(string content)
+        public Dictionary<String, Account> ParseFile(string content)
         {
-            var accounts = new List<Account>();
+            var accounts = new Dictionary<String, Account>();
             foreach (var line in content.Split("\r\n"))
             {
                 var columns = line.Split("|");
                 Account account = null;
                 if (TryParse(columns, ref account))
                 {
-                    accounts.Add(account);
+                    accounts.Add(account.AccountNumber, account);
                 }
                 else
                 {

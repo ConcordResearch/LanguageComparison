@@ -2,8 +2,8 @@ var currencies = ["MXN", "USD", "EUD", "GBP", "THB"]
 var trans = ["Bill", "Payment"]
 
 
-var numberOfAccounts = 100000
-var numberOfTransactions = 100000
+var numberOfAccounts = 1200000
+var numberOfTransactions = 1000000
 for (var i = 0; i < numberOfTransactions; ++i) { //accounts
 
   var acctNum = Math.round(Math.random() * numberOfAccounts) + 5000

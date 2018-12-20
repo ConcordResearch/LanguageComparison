@@ -1,4 +1,6 @@
 .vs 
-*.txt
+**/*.txt
 **/bin
 **/obj
+**/target
+*.lock
