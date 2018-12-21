@@ -232,8 +232,6 @@ getAccountNumber s = do
 getAmount :: Text -> Maybe Money
 getAmount amountText = do
   (firstText, currencyText) <- toMaybeTuple $ splitOn " " amountText
-  -- firstText <- amountParts !! 0
-  -- currencyText <- amountParts !! 1
   val <- tryParseInt firstText :: Maybe Int
   currency' <- parseCurrency currencyText
   pure $ Money val currency'
