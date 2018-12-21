@@ -29,6 +29,13 @@ blog posts by a chap named 'neil mitchell' are always awesome when it comes to h
 https://stackoverflow.com/questions/32123475/profiling-builds-with-stack
 
 
+```
+stack build --profile
+stack exec -- main +RTS -p
+# -p for time
+# -h for memory
+```
+
 ## Lenses
 
 

@@ -31,6 +31,7 @@ dependencies:
 - strict
 - text
 - attoparsec
+- text-show
 
 library:
   source-dirs: src
