@@ -19,6 +19,7 @@ import Data.Tuple (Tuple(..), fst)
 import Data.Tuple.Nested (Tuple3, (/\))
 import Effect (Effect, foreachE)
 import Effect.Console (log)
+import Effect.Exception (throwException)
 import Node.Encoding (Encoding(..))
 import Node.FS.Sync (readTextFile)
 

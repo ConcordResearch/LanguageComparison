@@ -9,7 +9,7 @@
 
 module Lib where
 
-import Prelude hiding (show, log, (!!), lines, readFile)
+import Prelude hiding (log, (!!), lines, readFile, writeFile, putStrLn, appendFile)
 import qualified Prelude
 import Control.Category ((<<<), (>>>))
 import Data.Traversable (mapM)
@@ -21,16 +21,17 @@ import qualified Data.HashMap.Strict as HM
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.List (nub)
 import Data.Text (Text, splitOn, unpack, pack)
-import Data.Text.IO (readFile)
+import Data.Text.IO (readFile, writeFile, appendFile, putStrLn)
 -- import Text.Read (readMay)
 import qualified Text.Read
-
+import qualified Data.Attoparsec.Text as Attoparsec
+import TextShow
 
 import Data.Tuple ( fst)
 import Control.Lens hiding ((<|), (|>), from, to)
 import Control.Lens.TH (makeLenses, makePrisms)
 import Data.Maybe(Maybe)
-import Data.Time.Clock (getCurrentTime, diffUTCTime)
+import Data.Time.Clock (NominalDiffTime, getCurrentTime, diffUTCTime)
 
 import Data
 
@@ -41,31 +42,15 @@ infixr 0 <|
 (|>) = (&)
 infixl 0 |>
 
---helps with dot notation
--- https://ghc.haskell.org/trac/ghc/ticket/14812
--- (.) = flip ($)
-
--- concatMap :: forall a b. (a -> [b]) -> [a] -> [b]
--- concatMap = flip bind
-
--- singleton :: forall a. a -> [a]
--- singleton a = [a]
-
--- mapMaybe :: forall a b. (a -> Maybe b) -> [a] -> [b]
--- mapMaybe f = concatMap (maybe [] singleton <<< f)
-
--- readMaybe :: Read a => String -> Maybe a
--- readMaybe s = case reads s of
---                   [(val, "")] -> Just val
---                   _           -> Nothing
-
--- https://hackage.haskell.org/package/basic-prelude-0.7.0/docs/src/BasicPrelude.html#readMay
-readMay :: Read a => Text -> Maybe a
-readMay = Text.Read.readMaybe . unpack
+tryParseInt :: Text -> Maybe Int
+tryParseInt text = 
+  case Attoparsec.parseOnly Attoparsec.double text of
+    Right r -> Just $ (Prelude.round r :: Int)
+    _ -> Nothing
 
 -- https://hackage.haskell.org/package/basic-prelude-0.7.0/docs/src/BasicPrelude.html#tshow
-show :: Show a => a -> Text
-show = pack . Prelude.show
+-- show :: Show a => a -> Text
+-- show = pack . Prelude.show
 
 -- https://github.com/qfpl/papa/blob/536b0a9243802347c299e077b5d85beb80d3a4a1/papa-lens-implement/src/Papa/Lens/Implement/Data/List.hs
 (!!) ::
@@ -79,9 +64,12 @@ q !! n =
 infixl 9 !!
 
 log :: Text -> IO ()
-log = Prelude.show >>> putStrLn
+-- log = Prelude.show >>> putStrLn
+log = putStrLn
 
-
+instance TextShow NominalDiffTime where
+  showt = pack . Prelude.show
+  showb = fromText . showt
 
 -- |  To run:
 -- |  $ node -e "require('./output/Main').main()"
@@ -90,59 +78,63 @@ run = do
   log ""
 
   tt0 <- getCurrentTime
-  accountsText <- readFile "../accounts-100k.txt" 
+  accountsText <- readFile "../accounts-1M.txt" 
   tt1 <- getCurrentTime
-  log <| "Read Accounts Complete " <> (show <| diffUTCTime tt1  tt0)
-  transactionsText <- readFile "../transactions-100k.txt"
+  log <| "Read Accounts Complete " <> (showt <| diffUTCTime tt1  tt0)
+  transactionsText <- readFile "../transactions-1M.txt"
   tt2 <- getCurrentTime
-  log <| "Read Transactions Complete " <> (show <| diffUTCTime tt2 tt1)
+  log <| "Read Transactions Complete " <> (showt <| diffUTCTime tt2 tt1)
 
   let accounts = parseAccounts accountsText
   tt3 <- getCurrentTime
-  log <| "Parse Accounts complete " <> (show <| diffUTCTime tt3 tt2)
+  log <| "Parse Accounts complete " <> (showt <| diffUTCTime tt3 tt2)
   
   let validAccounts = rights accounts
   tt4 <- getCurrentTime
-  log <| "Accounts Right Complete " <> (show <| diffUTCTime tt4 tt3)
+  log <| "Accounts Right Complete " <> (showt <| diffUTCTime tt4 tt3)
   
   let accountLookup = createAccountLookup validAccounts
   tt5 <- getCurrentTime
-  log <| "Create Account Lookup complete " <> (show <| diffUTCTime tt5 tt4)
+  log <| "Create Account Lookup complete " <> (showt <| diffUTCTime tt5 tt4)
   
   let transactions = parseTransactions transactionsText
   let validTransactions = rights transactions
   tt6 <- getCurrentTime
-  log <| "Parse Transaction Complete " <> (show <| diffUTCTime tt6 tt5)
+  log <| "Parse Transaction Complete " <> (showt <| diffUTCTime tt6 tt5)
   
   let (errors, acctMap) = processTransactions accountLookup validTransactions
   tt7 <- getCurrentTime
-  log <| "Process Transactions Complete " <> (show <| diffUTCTime tt7 tt6)
+  log <| "Process Transactions Complete " <> (showt <| diffUTCTime tt7 tt6)
 
-  let processedValues = elems acctMap
+  -- let processedValues = elems acctMap
   tt8 <- getCurrentTime
-  log <| "Values ToArray Complete " <> (show <| diffUTCTime tt8 tt7)
+  log <| "Values ToArray Complete " <> (showt <| diffUTCTime tt8 tt7)
+
+  -- writes to stdout
+  -- printT $ showbList $ elems acctMap
+  
+  writeFile "output.txt" $ toResults acctMap
+  -- mapM_ (Prelude.appendFile "output.txt") $ map Prelude.show $ elems acctMap
 
 
-
-  traverse ( show >>> log ) processedValues
-
-  -- let newContents = map show processedValues
-  -- when (length newContents > 0) $
-  --   writeFile "file.txt" newContents
 
   tt9 <- getCurrentTime
 
-  log <| "Read Accounts Complete " <> (show <| diffUTCTime tt1 tt0)
-  log <| "Read Transactions Complete " <> (show <| diffUTCTime tt2 tt1)
-  log <| "Parse Accounts complete " <> (show <| diffUTCTime tt3 tt2)
-  log <| "Accounts Right Complete " <> (show <| diffUTCTime tt4 tt3)
-  log <| "Create Account Lookup complete " <> (show <| diffUTCTime tt5 tt4)
-  log <| "Parse Transaction Complete " <> (show <| diffUTCTime tt6 tt5)
-  log <| "Process Transactions Complete " <> (show <| diffUTCTime tt7 tt6)
-  log <| "Values ToArray Complete " <> (show <| diffUTCTime tt8 tt7)
-  log <| "Complete " <> (show <| diffUTCTime tt9 tt8)
-  log <| "Total " <> (show <| diffUTCTime tt9 tt0)
+  log <| "Read Accounts Complete " <> (showt <| diffUTCTime tt1 tt0)
+  log <| "Read Transactions Complete " <> (showt <| diffUTCTime tt2 tt1)
+  log <| "Parse Accounts complete " <> (showt <| diffUTCTime tt3 tt2)
+  log <| "Accounts Right Complete " <> (showt <| diffUTCTime tt4 tt3)
+  log <| "Create Account Lookup complete " <> (showt <| diffUTCTime tt5 tt4)
+  log <| "Parse Transaction Complete " <> (showt <| diffUTCTime tt6 tt5)
+  log <| "Process Transactions Complete " <> (showt <| diffUTCTime tt7 tt6)
+  log <| "Values ToArray Complete " <> (showt <| diffUTCTime tt8 tt7)
+  log <| "Complete " <> (showt <| diffUTCTime tt9 tt8)
+  log <| "Total " <> (showt <| diffUTCTime tt9 tt0)
   pure ()
+
+toResults :: (HashMap AccountNumber Account) -> Text
+toResults acctMap = toText $ showbList $ elems acctMap
+
 
 conversionRates :: [(Currency, Currency, Rational)]
 conversionRates =
@@ -230,19 +222,17 @@ parseAccount text = do
   (a,b,name) <- toMaybeTuple3 $ splitOn "|" text
   acctNum <- getAccountNumber a
   balance <- getAmount b
-  pure $! Account acctNum balance name
+  pure $ Account acctNum balance name
   
 getAccountNumber :: Text -> Maybe AccountNumber
 getAccountNumber s = do
-  num <- readMay s :: Maybe Int
-  pure $ (AccountNumber (show num))
+  num <- tryParseInt s :: Maybe Int
+  pure $ (AccountNumber (showt num))
 
 getAmount :: Text -> Maybe Money
 getAmount amountText = do
   (firstText, currencyText) <- toMaybeTuple $ splitOn " " amountText
-  -- firstText <- amountParts !! 0
-  -- currencyText <- amountParts !! 1
-  val <- readMay firstText :: Maybe Int
+  val <- tryParseInt firstText :: Maybe Int
   currency' <- parseCurrency currencyText
   pure $ Money val currency'
 
@@ -272,41 +262,29 @@ parseTransaction text = do
   acctNum <- getAccountNumber a
   amt <- getAmount b
   case transtype of
-    "Bill" -> pure $! Bill acctNum amt transDetails
-    "Payment" -> pure $! Payment acctNum amt transDetails
+    "Bill" -> pure $ Bill acctNum amt transDetails
+    "Payment" -> pure $ Payment acctNum amt transDetails
     _ -> Nothing
 
 createAccountLookup :: [Account] -> HashMap AccountNumber Account
 createAccountLookup accts =
-  HM.fromList $! Prelude.map (\acct -> (acct^.accountNumber, acct)) accts
+  HM.fromList $ Prelude.map (\acct -> (acct^.accountNumber, acct)) accts
 
 processTransactions :: HashMap AccountNumber Account -> [Transaction] -> ([Text], (HashMap AccountNumber Account))
 processTransactions accounts transactions =
   let
-    applyTransaction :: HashMap AccountNumber Account -> Transaction -> Maybe Account
-    applyTransaction accts transaction = do
-      acct <- HM.lookup (transaction^.accountNumber) accts
-      -- processTransaction currencyConversionLookup transaction acct
-      Just $! appl acct transaction
-
-    applyResult 
-      :: [Text] 
-      -> HashMap AccountNumber Account 
-      -> Transaction 
-      -> Maybe Account 
-      -> ([Text], (HashMap AccountNumber Account))
-    applyResult errors accts _ (Just acct) =
-      (errors, insert (acct^.accountNumber) acct accts)
-    applyResult errors accts trans Nothing =
-      (("Failed to process transaction: " <> show trans) : errors, accts)
-
-    buildResult 
-      :: ([Text], (HashMap AccountNumber Account))
-      -> Transaction
-      -> ([Text], (HashMap AccountNumber Account))
-    buildResult (errors, accts') transaction =
-      applyTransaction accts' transaction |>
-        applyResult errors accts' transaction
+    buildResult :: ([Text], (HashMap AccountNumber Account)) -> Transaction -> ([Text], (HashMap AccountNumber Account))
+    buildResult (errors, accounts) transaction = 
+      let 
+        result =
+          (HM.lookup (transaction^.accountNumber) accounts)
+            >>= (\acct -> pure $ applyTransaction acct transaction)
+        add acct = insert (acct^.accountNumber) acct accounts
+        errors' = ("Failed to process transaction: " <> showt transaction) : errors
+      in
+        case result of
+          Just newAccount -> (errors, add newAccount)
+          Nothing -> (errors', accounts)
   in 
     foldl'
       buildResult
@@ -318,8 +296,8 @@ processTransactions accounts transactions =
 -- Account {_accountNumber = AccountNumber "345", _balance = 35 USD, _name = "Jorge"}
 -- > appl a1 t2
 -- Account {_accountNumber = AccountNumber "345", _balance = 10 USD, _name = "Jorge"}
-appl :: Account -> Transaction -> Account
-appl a t =
+applyTransaction :: Account -> Transaction -> Account
+applyTransaction a t =
   let
     oper (Bill _ _ _) = addCurrency
     oper (Payment _ _ _) = minusCurrency

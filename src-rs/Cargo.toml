@@ -1,0 +1,12 @@
+[package]
+name = "src-rs"
+version = "0.1.0"
+authors = ["David Koontz <david@koontzfamily.org>"]
+edition = "2018"
+
+#[[bin]]
+#name = "generator"
+#path = "src/generator.rs"
+
+[dependencies]
+

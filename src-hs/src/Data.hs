@@ -17,36 +17,61 @@ import Control.Lens
 import GHC.Generics (Generic)
 import Data.Hashable (Hashable)
 import Data.Text (Text)
-
+import TextShow (TextShow, showb, showt, showbList, unlinesB, fromText, singleton)
+import Data.Foldable (foldl')
 
 data Currency = USD | MXN | EUD | THB | GBP
   deriving (Eq, Ord, Generic)
 instance Hashable Currency 
 
-instance Show Currency where
-  show USD = "USD"
-  show MXN = "MXN"
-  show EUD = "EUD"
-  show THB = "THB"
-  show GBP = "GBP"
+instance TextShow Currency where
+  -- for Text
+  showt USD = "USD"
+  showt MXN = "MXN"
+  showt EUD = "EUD"
+  showt THB = "THB"
+  showt GBP = "GBP"
+  -- for Builder
+  -- showb :: a	-> Builder
+  -- fromText :: Text -> Builder
+  showb = fromText . showt
+  -- for List to Builder
+  -- showbList :: [a]	-> Builder
+  -- unlinesB :: [Builder] -> Builder  -Merges several Builders, separating them by newlines.
+  showbList arr = unlinesB $ map showb arr
 
 data Money = Money
   { _value :: Int
   , _currency :: Currency
   }
-instance Show Money where
-  show c = (show $ _value c) <> " " <> (show $ _currency c) 
+instance TextShow Money where
+  showt c = (showt $ _value c) <> " " <> (showt $ _currency c) 
+  showb = fromText . showt
 
 newtype AccountNumber = AccountNumber Text
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Generic)
 instance Hashable AccountNumber
+instance TextShow AccountNumber where
+  showt (AccountNumber n) = n
+  showb = fromText . showt
 
 data Account = Account
   { _accountNumber :: AccountNumber
   , _balance :: Money
   , _name :: Text
   }
-  deriving (Show)
+instance TextShow Account where
+  showt (Account acctNum bal name) = 
+    "Account { accountNumber: " 
+      <> showt acctNum
+      <> ", balance: "
+      <> showt bal
+      <> ", name: "
+      <> showt name
+      <> " }"
+  showb = fromText . showt
+  -- showbList arr = foldl' (\acc a -> acc <> singleton '\n' <> a) mempty $ map showb arr
+  showbList arr = unlinesB $ map showb arr
 
 data Transaction
   = Bill 
@@ -59,21 +84,24 @@ data Transaction
     , _amount :: Money
     , _source :: Text
     }
-instance Show Transaction where
-  show (Bill acctNum amt bucket) = 
-    "Bill - accountNumber: " 
-      <> (show acctNum) 
+instance TextShow Transaction where
+  showt (Bill acctNum amt bucket) = 
+    "Bill { accountNumber: " 
+      <> showt acctNum
       <> ", amount: "
-      <> (show amt)
+      <> showt amt
       <> ", bucket: "
-      <> show bucket
-  show (Payment acctNum amt source) = 
+      <> showt bucket
+      <> " }"
+  showt (Payment acctNum amt source) = 
     "Bill - accountNumber: " 
-      <> (show acctNum) 
+      <> showt acctNum
       <> ", amount: "
-      <> (show amt)
+      <> showt amt
       <> ", source: "
-      <> show source
+      <> showt source
+      <> " }"
+  showb = fromText . showt
 
 a1 :: Account
 a1 = Account
@@ -117,7 +145,7 @@ t2 = Payment
 -- data FooBar =
 --     Foo { _x :: Int}
 --   | Bar { _x :: Int}
---   deriving (Show)
+--   deriving (TextShow)
 
 -- class HasX t where
 --   x :: Lens' t Int
