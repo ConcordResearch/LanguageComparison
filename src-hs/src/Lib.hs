@@ -78,10 +78,10 @@ run = do
   log ""
 
   tt0 <- getCurrentTime
-  accountsText <- readFile "../accounts-1M.txt" 
+  accountsText <- readFile "../accounts.txt" 
   tt1 <- getCurrentTime
   log <| "Read Accounts Complete " <> (showt <| diffUTCTime tt1  tt0)
-  transactionsText <- readFile "../transactions-1M.txt"
+  transactionsText <- readFile "../transactions.txt"
   tt2 <- getCurrentTime
   log <| "Read Transactions Complete " <> (showt <| diffUTCTime tt2 tt1)
 

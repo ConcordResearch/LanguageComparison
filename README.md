@@ -18,7 +18,7 @@ Languages being compared:
 
 |C#|Rust|PureScript|Haskel|Elixir|
 |-|-|-|-|-|
-|x?|x?|x?|x?|
+|?|186.99s|?|123.34s|187.9s|
 
 ## Potential Next Steps
 

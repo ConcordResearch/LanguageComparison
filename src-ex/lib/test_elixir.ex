@@ -49,16 +49,16 @@ defmodule TestElixir do
         IO.puts("Eror opeing file #{inspect(x)}")
     end
 
-    # accounts
+    accounts
   end
 
-  defp read_transactions(transactions \\ "./transactions.txt") do
+  defp read_transactions(transactions \\ "../transactions.txt") do
     load_file(transactions)
     |> Stream.map(&into_transactions/1)
     |> Enum.into([])
   end
 
-  defp read_accounts(accounts \\ "./accounts.txt") do
+  defp read_accounts(accounts \\ "../accounts.txt") do
     load_file(accounts)
     |> Stream.map(&into_accounts/1)
     |> Enum.into(
