@@ -14,7 +14,7 @@ Languages being compared:
 
 ## Performance Comparison
 - 1.2M Accounts
-- 10,0000 Transactions
+- 10M Transactions
 
 |C#|Rust|PureScript|Haskel|Elixir|
 |-|-|-|-|-|
