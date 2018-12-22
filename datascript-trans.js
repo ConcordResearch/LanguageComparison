@@ -3,7 +3,7 @@ var trans = ["Bill", "Payment"]
 
 
 var numberOfAccounts = 1200000
-var numberOfTransactions = 5000000
+var numberOfTransactions = 10000000
 for (var i = 0; i < numberOfTransactions; ++i) { //accounts
 
   var acctNum = Math.round(Math.random() * numberOfAccounts) + 5000

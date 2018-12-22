@@ -7,6 +7,7 @@ defmodule Runner do
 
   @impl true
   def init(state) do
+    schedule_notifications()
     {:ok, state}
   end
 
@@ -30,8 +31,17 @@ defmodule Runner do
   end
 
   @impl true
-  def handle_info(x, state) do
-    IO.inspect("handle_info got this: #{x}")
+  def handle_info(:update, state) do
+    IO.write([".."])
+
+    if(Enum.count(state) == 0) do
+      schedule_notifications()
+    end
+
     {:noreply, state}
+  end
+
+  defp schedule_notifications(interval \\ 10 * 1000) do
+    Process.send_after(self(), :update, interval)
   end
 end

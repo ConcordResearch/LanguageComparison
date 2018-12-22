@@ -1,21 +1,19 @@
 defmodule TestElixir do
-  import Number.Delimit
+  # import Number.Delimit
 
   def apply_transactions() do
     {time, result} = :timer.tc(fn -> do_apply_transactions() end)
     IO.puts("It took #{time / 1_000_000}s")
+    # IO.inspect("There are: #{number_to_delimited(Enum.count(result))} accounts")
     result
   end
 
   defp do_apply_transactions() do
     File.rm("/tmp/output.txt")
     accounts = read_accounts()
-
-    IO.inspect("There are: #{number_to_delimited(Enum.count(accounts))} accounts")
-
     transactions = read_transactions()
 
-    IO.inspect("There are: #{number_to_delimited(Enum.count(transactions))} transactions")
+    # IO.inspect("There are: #{number_to_delimited(Enum.count(transactions))} transactions")
 
     transactions
     |> Enum.map(fn trx ->
@@ -51,7 +49,7 @@ defmodule TestElixir do
         IO.puts("Eror opeing file #{inspect(x)}")
     end
 
-    accounts
+    # accounts
   end
 
   defp read_transactions(transactions \\ "./transactions.txt") do
