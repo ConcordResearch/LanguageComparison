@@ -14,8 +14,8 @@ defmodule Runner do
     GenServer.cast(pid, :run)
   end
 
-  def show_state(pid) do
-    GenServer.call(pid, :show_state)
+  def show(pid) do
+    GenServer.call(pid, :show)
   end
 
   @impl true
@@ -30,14 +30,8 @@ defmodule Runner do
   end
 
   @impl true
-  def handle_info(:work, state) do
-    # Do the desired work here
-    # Reschedule once more
-    schedule_work()
+  def handle_info(x, state) do
+    IO.inspect("handle_info got this: #{x}")
     {:noreply, state}
-  end
-
-  defp schedule_work() do
-    Process.send_after(self(), :work, 2 * 60 * 60 * 1000)
   end
 end

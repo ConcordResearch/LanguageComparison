@@ -1,21 +1,17 @@
 # TestElixir
 
-**TODO: Add description**
-
-## Installation
-
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `test_elixir` to your list of dependencies in `mix.exs`:
-
-```elixir
-def deps do
-  [
-    {:test_elixir, "~> 0.1.0"}
-  ]
-end
+```shell
+> clear; mix deps.get; mix clean; mix format ; iex -S mix
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/test_elixir](https://hexdocs.pm/test_elixir).
-
+```elixir
+iex(1)> {:ok, pid} = GenServer.start_link(Runner, [])
+{:ok, #PID<0.304.0>}
+iex(2)> GenServer.cast(pid, :run)
+:ok
+"There are: 100,000.00 accounts"
+"There are: 100,000.00 transactions"
+iex(3)> GenServer.call(pid, :show) |> Enum.count()
+100000
+iex(4)>
+```

@@ -2,6 +2,13 @@ defmodule TestElixir do
   import Number.Delimit
 
   def apply_transactions() do
+    {time, result} = :timer.tc(fn -> do_apply_transactions() end)
+    IO.puts("It took #{time / 1_000_000}s")
+    result
+  end
+
+  defp do_apply_transactions() do
+    File.rm("/tmp/output.txt")
     accounts = read_accounts()
 
     IO.inspect("There are: #{number_to_delimited(Enum.count(accounts))} accounts")
@@ -31,6 +38,18 @@ defmodule TestElixir do
           # IO.inspect("Transaction does not contain valid account #{inspect(trx)}")
       end
     end)
+
+    # case File.open("/tmp/output.txt", [:write, :utf8]) do
+    case :file.open("/tmp/output.txt", [:write, :raw]) do
+      {:ok, file} ->
+        accounts
+        |> Enum.each(&:file.write(file, [inspect(&1), "\n"]))
+
+        File.close(file)
+
+      x ->
+        IO.puts("Eror opeing file #{inspect(x)}")
+    end
 
     accounts
   end
