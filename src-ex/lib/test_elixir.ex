@@ -8,8 +8,7 @@ defmodule TestElixir do
 
     {time, result} = :timer.tc(fn -> do_apply_transactions() end)
 
-    IO.puts("It took a grand total of: #{time / 1_000_000} seconds.")
-    IO.puts("End test\n\n\n\t\tKILL with ^c")
+    IO.puts("It took a grand total of: #{time / 1_000_000} seconds.\n\n End test\n\n\n\t\tKILL with ^c")
 
     result
   end

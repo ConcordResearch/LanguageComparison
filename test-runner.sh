@@ -54,3 +54,4 @@ MIX_ENV=prod mix release
 mv _build/prod/rel/test_elixir .
 cd ..
 ./src-ex/test_elixir/bin/test_elixir foreground
+
