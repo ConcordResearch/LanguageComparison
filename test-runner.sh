@@ -44,9 +44,13 @@ echo ""
 echo "##### ELIXIR ##########"
 echo ""
 
+rm elixir-output.txt
 cd src-ex
 rm output.txt
+rm -rf test_elixir
 mix deps.get
 mix clean
-time mix run
+MIX_ENV=prod mix release
+mv _build/prod/rel/test_elixir .
 cd ..
+./src-ex/test_elixir/bin/test_elixir foreground

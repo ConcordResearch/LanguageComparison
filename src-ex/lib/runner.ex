@@ -6,9 +6,9 @@ defmodule Runner do
   end
 
   @impl true
-  def init(state) do
-    schedule_notifications()
-    {:ok, state}
+  def init([]) do
+    schedule_run()
+    {:ok, :run}
   end
 
   def run(pid) do
@@ -20,28 +20,33 @@ defmodule Runner do
   end
 
   @impl true
+  def handle_cast(:run, _state) do
+    TestElixir.apply_transactions()
+    {:noreply, []}
+  end
+
+  @impl true
   def handle_call(:show, _who, state) do
     {:reply, state, state}
   end
 
   @impl true
-  def handle_cast(:run, _state) do
-    new_state = TestElixir.apply_transactions()
-    {:noreply, new_state}
-  end
+  def handle_info(:run, state) do
+    cond do
+      :run = state ->
+        IO.puts("\n\n((GenServer  go go go run())")
+        IO.puts("Where are here '#{Path.expand(".")}'")
+        GenServer.cast(self(), :run)
+        IO.puts("\n\n")
 
-  @impl true
-  def handle_info(:update, state) do
-    IO.write([".."])
-
-    if(Enum.count(state) == 0) do
-      schedule_notifications()
+      true ->
+        []
     end
 
-    {:noreply, state}
+    {:noreply, []}
   end
 
-  defp schedule_notifications(interval \\ 10 * 1000) do
-    Process.send_after(self(), :update, interval)
+  defp schedule_run() do
+    Process.send_after(self(), :run, 1000)
   end
 end

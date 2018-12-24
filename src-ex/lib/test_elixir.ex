@@ -1,19 +1,24 @@
 defmodule TestElixir do
-  # import Number.Delimit
+  @input_file_accounts "../../accounts1.2m.txt"
+  @input_file_transactions "../../transactions10m.txt"
+  @output_file "../elixir-output.txt"
 
   def apply_transactions() do
+    IO.puts("Starting test...")
+
     {time, result} = :timer.tc(fn -> do_apply_transactions() end)
-    IO.puts("It took #{time / 1_000_000}s")
-    # IO.inspect("There are: #{number_to_delimited(Enum.count(result))} accounts")
+
+    IO.puts("It took a grand total of: #{time / 1_000_000} seconds.")
+    IO.puts("End test\n\n\n\t\tKILL with ^c")
+
     result
   end
 
   defp do_apply_transactions() do
-    File.rm("/tmp/output.txt")
+    File.rm(@output_file)
     accounts = read_accounts()
     transactions = read_transactions()
-
-    # IO.inspect("There are: #{number_to_delimited(Enum.count(transactions))} transactions")
+    IO.puts("Starting processing...")
 
     transactions
     |> Enum.map(fn trx ->
@@ -37,8 +42,7 @@ defmodule TestElixir do
       end
     end)
 
-    # case File.open("/tmp/output.txt", [:write, :utf8]) do
-    case :file.open("/tmp/output.txt", [:write, :raw]) do
+    case :file.open(@output_file, [:write, :raw]) do
       {:ok, file} ->
         accounts
         |> Enum.each(&:file.write(file, [inspect(&1), "\n"]))
@@ -49,16 +53,17 @@ defmodule TestElixir do
         IO.puts("Eror opeing file #{inspect(x)}")
     end
 
+    IO.puts("End processing")
     accounts
   end
 
-  defp read_transactions(transactions \\ "../transactions.txt") do
+  defp read_transactions(transactions \\ @input_file_transactions) do
     load_file(transactions)
     |> Stream.map(&into_transactions/1)
     |> Enum.into([])
   end
 
-  defp read_accounts(accounts \\ "../accounts.txt") do
+  defp read_accounts(accounts \\ @input_file_accounts) do
     load_file(accounts)
     |> Stream.map(&into_accounts/1)
     |> Enum.into(
@@ -68,6 +73,8 @@ defmodule TestElixir do
   end
 
   defp load_file(filename) when is_binary(filename) do
+    IO.puts("Reading #{inspect(filename)}")
+
     File.stream!(filename)
     |> Stream.map(&String.replace(&1, "\n", ""))
   end
