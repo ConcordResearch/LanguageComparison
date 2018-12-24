@@ -59,6 +59,6 @@ Languages being compared:
     - Clusteable
 - Cons
     - Dynamic
-    - Static types (Dyalizer) is an optional add-on
+    - Static types (Dyalizer) are an optional add-on
 - [Code](https://github.com/ConcordResearch/LanguageComparison/tree/master/src-ex)
-- Running: `?`
+- Running: `mix deps.get; mix clean; MIX_ENV=prod mix release;mv _build/prod/rel/test_elixir . ; ./test_elixir/bin/test_elixir foreground`
