@@ -51,7 +51,7 @@ Languages being compared:
  - Look at record syntax
  - What kind of speed to we get?
 - [Code](https://github.com/ConcordResearch/LanguageComparison/tree/master/src-hs)
-- Running: `stack build; time stack run ?`
+- Running: `stack build --fast; time stack run`
 ### Elixir
 - Pros
     - Concurrent
