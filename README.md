@@ -28,24 +28,30 @@ Languages being compared:
 - Cons
   * Large holes in logic - potential failure points
 - [Code](https://github.com/ConcordResearch/LanguageComparison/tree/master/src-cs)
+- Running: `dotnet build; time dotnet run`
 
 ### Rust
 - Pros
   * Correctness
+  * Tool ecosystem
 - Cons
-  - ?
+  * Borrow checker / need to understand memory layout
+  * Lack of libraries
 - [Code](https://github.com/ConcordResearch/LanguageComparison/tree/master/src-rs)
+- Running: `cargo build --release; time cargo run --release`
 ### PureScript
 - Pros
   * Correctness
 - Cons
   * Performance concerns on large datasets (not because of Node)
 - [Code](https://github.com/ConcordResearch/LanguageComparison/tree/master/src-ps)
+- Running: `pulp build; time node -e "require('output/Main').main()"
 ### Haskell
  - Do Account\Transaction problem
  - Look at record syntax
  - What kind of speed to we get?
 - [Code](https://github.com/ConcordResearch/LanguageComparison/tree/master/src-hs)
+- Running: `stack build; time stack run ?`
 ### Elixir
 - Pros
     - Concurrent
@@ -55,3 +61,4 @@ Languages being compared:
     - Dynamic
     - Static types (Dyalizer) is an optional add-on
 - [Code](https://github.com/ConcordResearch/LanguageComparison/tree/master/src-ex)
+- Running: `?`
