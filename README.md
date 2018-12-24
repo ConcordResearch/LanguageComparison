@@ -16,9 +16,11 @@ Languages being compared:
 - 1.2M Accounts
 - 10M Transactions
 
-|C#|Rust|PureScript|Haskel|Elixir|
-|-|-|-|-|-|
-|?|186.99s|?|123.34s|187.9s|
+|Machine|C#|Rust|PureScript|Haskell|Elixir|
+|-|-|-|-|-|-|
+|Alfredo|?|186.99s|?|123.34s|187.9s|
+|Dave|42s|29s|x|108s|360s|
+|(Memory)|4 GB|1.6 GB|x|12 GB|3 GB|
 
 ## Potential Next Steps
 

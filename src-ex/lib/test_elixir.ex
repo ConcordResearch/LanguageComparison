@@ -1,6 +1,6 @@
 defmodule TestElixir do
-  @input_file_accounts "../../accounts1.2m.txt"
-  @input_file_transactions "../../transactions10m.txt"
+  @input_file_accounts "../../../../../accounts1.2m.txt"
+  @input_file_transactions "../../../../../transactions10m.txt"
   @output_file "../elixir-output.txt"
 
   def apply_transactions() do
