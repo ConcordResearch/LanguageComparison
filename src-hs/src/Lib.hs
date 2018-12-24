@@ -16,7 +16,7 @@ import Data.Traversable (mapM)
 import Data.Either (rights, lefts)
 import Data.Either.Combinators (rightToMaybe)
 import Data.Foldable (foldl')
-import Data.HashMap.Lazy (HashMap, insert, lookup, elems)
+import Data.HashMap.Strict (HashMap, insert, lookup, elems)
 import qualified Data.HashMap.Strict as HM
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.List (nub)
@@ -274,17 +274,17 @@ processTransactions :: HashMap AccountNumber Account -> [Transaction] -> ([Text]
 processTransactions accounts transactions =
   let
     buildResult :: ([Text], (HashMap AccountNumber Account)) -> Transaction -> ([Text], (HashMap AccountNumber Account))
-    buildResult (errors, accounts) transaction = 
+    buildResult (errors, accounts') transaction = 
       let 
         result =
-          (HM.lookup (transaction^.accountNumber) accounts)
+          (HM.lookup (transaction^.accountNumber) accounts')
             >>= (\acct -> pure $ applyTransaction acct transaction)
-        add acct = insert (acct^.accountNumber) acct accounts
+        add acct = insert (acct^.accountNumber) acct accounts'
         errors' = ("Failed to process transaction: " <> showt transaction) : errors
       in
         case result of
           Just newAccount -> (errors, add newAccount)
-          Nothing -> (errors', accounts)
+          Nothing -> (errors', accounts')
   in 
     foldl'
       buildResult
