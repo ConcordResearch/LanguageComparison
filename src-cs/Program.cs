@@ -16,7 +16,7 @@ namespace CSharpPerfEval
                 new ExchangeRate(Currency.USD, Currency.THB, 3.5),
                 new ExchangeRate(Currency.USD, Currency.GBP, 4.5),
 
-                
+
                 new ExchangeRate(Currency.MXN, Currency.EUD, 2.5),
                 new ExchangeRate(Currency.MXN, Currency.THB, 3.5),
                 new ExchangeRate(Currency.MXN, Currency.GBP, 4.5),
@@ -33,13 +33,14 @@ namespace CSharpPerfEval
             var reader = new FileReader();
 
             var accounts = new AccountParser().ParseFile(reader.ReadFile("../accounts1.2m.txt"));
-            var transactions = new TransactionParser().ParseFile(reader.ReadFile("../transactions1m.txt"));
-            
+            var transactions = new TransactionParser().ParseFile(reader.ReadFile("../transactions10m.txt"));
+
             var processor = new Processor(converter, accounts, transactions);
 
             processor.Process();
 
-            using (var file = new StreamWriter("output.txt")) {
+            using (var file = new StreamWriter("output.txt"))
+            {
                 foreach (var account in accounts)
                 {
                     file.WriteLine(account.Value);
@@ -79,7 +80,7 @@ namespace CSharpPerfEval
         public string AccountNumber { get; set; }
         public double Amount { get; set; }
         public Currency Currency { get; set; }
-        
+
     }
 
     public class Bill : Transaction
@@ -95,11 +96,11 @@ namespace CSharpPerfEval
 
     public class CurrencyConverter
     {
-        public readonly  Dictionary<Currency, Dictionary<Currency,ExchangeRate>> ExchangeRates;
+        public readonly Dictionary<Currency, Dictionary<Currency, ExchangeRate>> ExchangeRates;
 
         public CurrencyConverter(List<ExchangeRate> rates)
         {
-                                           // from              // to      // rate
+            // from              // to      // rate
             ExchangeRates = new Dictionary<Currency, Dictionary<Currency, ExchangeRate>>();
 
             var dict = new Dictionary<Currency, ExchangeRate>();
@@ -129,7 +130,7 @@ namespace CSharpPerfEval
             return ExchangeRates[from][to].Rate * amount;
         }
     }
-    
+
     public class ExchangeRate
     {
         public ExchangeRate(Currency from, Currency to, double rate)
@@ -149,7 +150,7 @@ namespace CSharpPerfEval
         CurrencyConverter _converter;
         Dictionary<String, Account> accounts;
         List<Transaction> transactions;
-        
+
 
         public Processor(CurrencyConverter converter, Dictionary<String, Account> accounts, List<Transaction> transactions)
         {
@@ -172,10 +173,11 @@ namespace CSharpPerfEval
                 transactionsForAccount[transaction.AccountNumber].Add(transaction);
             }
 
-            foreach(var kvp in transactionsForAccount)
+            foreach (var kvp in transactionsForAccount)
             {
                 Account account;
-                if(accounts.TryGetValue(kvp.Key, out account)) {
+                if (accounts.TryGetValue(kvp.Key, out account))
+                {
                     foreach (var trans in kvp.Value)
                     {
                         ApplyTransactionToAccount(account, trans);
@@ -184,7 +186,7 @@ namespace CSharpPerfEval
             }
         }
 
-        
+
         private void ApplyTransactionToAccount(Account acct, Transaction trans)
         {
             var amount = trans.Amount;
@@ -204,14 +206,14 @@ namespace CSharpPerfEval
                 default:
                     throw new Exception();
             }
-        } 
+        }
     }
     public class TransactionParser
     {
         public List<Transaction> ParseFile(string content)
         {
             var transactions = new List<Transaction>();
-            foreach (var line in content.Split("\r\n"))
+            foreach (var line in content.Split("\n"))
             {
                 var columns = line.Split("|");
                 Transaction transaction = null;
@@ -228,7 +230,6 @@ namespace CSharpPerfEval
             return transactions;
         }
 
-        // console.log(`${acctNum}|${Math.round(Math.random()*1000)} ${currencies[Math.round(Math.random() * (currencies.length-1))]}|${tran}|${notes}`)
         public bool TryParse(string[] columns, ref Transaction transaction)
         {
             if (columns.Length != 4)
@@ -250,7 +251,7 @@ namespace CSharpPerfEval
                 return false;
             }
 
-            
+
             if (columns[2] == "Bill")
             {
                 transaction = new Bill()
@@ -278,13 +279,13 @@ namespace CSharpPerfEval
         }
     }
 
-   
+
     public class AccountParser
     {
         public Dictionary<String, Account> ParseFile(string content)
         {
             var accounts = new Dictionary<String, Account>();
-            foreach (var line in content.Split("\r\n"))
+            foreach (var line in content.Split("\n"))
             {
                 var columns = line.Split("|");
                 Account account = null;
@@ -300,8 +301,9 @@ namespace CSharpPerfEval
 
             return accounts;
         }
-        public bool TryParse(string[] columns, ref Account account) {
-            if(columns.Length != 3)
+        public bool TryParse(string[] columns, ref Account account)
+        {
+            if (columns.Length != 3)
                 return false;
 
             int result;
@@ -313,7 +315,7 @@ namespace CSharpPerfEval
             var moneyParts = columns[1].Split(" ");
             double currencyAmount;
             Currency currencyType;
-            if (moneyParts.Length != 2 
+            if (moneyParts.Length != 2
                 || !double.TryParse(moneyParts[0], out currencyAmount)
                 || !Enum.TryParse(moneyParts[1], out currencyType))
             {
@@ -329,7 +331,7 @@ namespace CSharpPerfEval
             };
 
             return true;
-        } 
+        }
     }
 
     public class FileReader

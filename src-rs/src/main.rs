@@ -56,8 +56,8 @@ enum Transaction {
 
 fn main() -> Result<(), std::io::Error> {
     // the ? is quasi doing what <- does in a do block
-    let accounts_text = fs::read_to_string("../accounts.txt")?;
-    let transactions_text = fs::read_to_string("../transactions.txt")?;
+    let accounts_text = fs::read_to_string("../accounts1.2m.txt")?;
+    let transactions_text = fs::read_to_string("../transactions10m.txt")?;
 
     let conversion_rates = build_conversion_rates(&[
         (Currency::USD, Currency::MXN, 1.5),
