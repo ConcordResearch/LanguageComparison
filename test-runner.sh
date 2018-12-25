@@ -17,7 +17,6 @@ cd src-rs
 rm output.txt
 cargo build --release &&\
 time cargo run --release
-cd ..
 
 echo ""
 echo "##### HASKELL #########"
@@ -41,16 +40,19 @@ cd ..
 # cd ..
 
 
+cd ..
 echo ""
 echo "##### ELIXIR ##########"
 echo ""
 
+rm elixir-output.txt
 cd src-ex
-rm _build/prod/rel/elixir-output.txt
+rm output.txt
 rm -rf test_elixir
-mix deps.get &&\
-mix clean &&\
-MIX_ENV=prod mix release &&\
-time _build/prod/rel/test_elixir/bin/test_elixir.bat foreground
+mix deps.get
+mix clean
+MIX_ENV=prod mix release
+mv _build/prod/rel/test_elixir .
 cd ..
+./src-ex/test_elixir/bin/test_elixir foreground
 

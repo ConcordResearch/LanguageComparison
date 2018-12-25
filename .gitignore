@@ -18,3 +18,5 @@ mix.lock
 test_elixir-*.tar
 **/release/
 .vscode/
+*.psc-ide-port
+src-ex/test_elixir/
