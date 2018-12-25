@@ -30,15 +30,16 @@ stack build --fast &&\
 time stack run Main
 cd ..
 
-echo ""
-echo "##### PURESCRIPT ######"
-echo ""
-cd src-ps
-rm output.txt
-psc-package build &&\
-pulp build &&\
-time node -e "require('output/Main').main()"
-cd ..
+
+# echo ""
+# echo "##### PURESCRIPT ######"
+# echo ""
+# cd src-ps
+# rm output.txt
+# psc-package build &&\
+# pulp build &&\
+# time node -e "require('output/Main').main()"
+# cd ..
 
 echo ""
 echo "##### ELIXIR ##########"
