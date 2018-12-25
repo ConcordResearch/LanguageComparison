@@ -1,5 +1,6 @@
 clear
 
+echo ""
 echo "##### C# ##############"
 echo ""
 
@@ -17,6 +18,7 @@ cd src-rs
 rm output.txt
 cargo build --release &&\
 time cargo run --release
+cd ..
 
 echo ""
 echo "##### HASKELL #########"
@@ -31,7 +33,6 @@ cd ..
 # echo ""
 # echo "##### PURESCRIPT ######"
 # echo ""
-
 # cd src-ps
 # rm output.txt
 # psc-package build &&\
@@ -39,8 +40,6 @@ cd ..
 # time node -e "require('output/Main').main()"
 # cd ..
 
-
-cd ..
 echo ""
 echo "##### ELIXIR ##########"
 echo ""
