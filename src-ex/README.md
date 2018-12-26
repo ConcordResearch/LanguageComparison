@@ -1,5 +1,8 @@
 # TestElixir
+This version of the test uses a single process for all the work.
 
+For a concurrent test see [TestElixir2](https://github.com/ConcordResearch/LanguageComparison/tree/master/src-ex2)
+### Notes
 ```shell
 > clear; mix deps.get; mix clean; mix format ; iex -S mix
 ```
