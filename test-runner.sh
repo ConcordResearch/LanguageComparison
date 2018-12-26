@@ -37,8 +37,8 @@ echo ""
 cd src-ps
 rm output.txt
 psc-package build &&\
-pulp build &&\
-time node -e "require('./output/Main').main()"
+pulp build -- --json-errors 2> errors.txt &&\
+time node --max-old-space-size=8192 -e "require('./output/Main').main()"
 cd ..
 
 echo ""
@@ -46,18 +46,13 @@ echo "##### ELIXIR ##########"
 echo ""
 
 ### The following lines are in this order to make sure we can run repeatedly
-rm elixir-output.txt                                                    ####
 cd src-ex                                                               ####
-rm output.txt                                                           ####
-rm -rf test_elixir                                                      ####
+rm -rf _build                                                           ####
 mix deps.get                                                            ####
 mix clean                                                               ####
 MIX_ENV=prod mix release                                                ####
-mv _build/prod/rel/test_elixir .                                        ####
+time ./_build/prod/rel/test_elixir/bin/test_elixir foreground           ####
 cd ..                                                                   ####
-## And yes, you have to hit ^C once it's done.                          ####
-##  But it will tell you that when it's done.                           ####
-./src-ex/test_elixir/bin/test_elixir foreground                         ####
 ###  On Windows Uncomment line below instead                            ####
 #./src-ex/test_elixir/bin/test_elixir.bat foreground                    ####
 ############################################################################
