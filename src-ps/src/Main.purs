@@ -21,7 +21,9 @@ import Effect (Effect, foreachE)
 import Effect.Console (log)
 import Effect.Exception (throwException)
 import Node.Encoding (Encoding(..))
-import Node.FS.Sync (readTextFile)
+import Node.FS.Sync (readTextFile, writeTextFile)
+import Node.Stream (end, writeString)
+import Node.FS.Stream (createWriteStream)
 
 import Time (now)
 
@@ -38,10 +40,10 @@ main1 :: Effect Unit
 main1 = do
 
   tt0 <- now
-  accountsText <- readTextFile UTF8 "accounts-1m.txt"
+  accountsText <- readTextFile UTF8 "../accounts1.2m.txt"
   tt1 <- now
   log <| "Read Accounts Complete " <> (show <| tt1 - tt0)
-  transactionsText <- readTextFile UTF8 "transactions-1m.txt"
+  transactionsText <- readTextFile UTF8 "../transactions10.txt"
   tt2 <- now
   log <| "Read Transactions Complete " <> (show <| tt2 - tt1)
 
@@ -70,7 +72,17 @@ main1 = do
   tt8 <- now
   log <| "Values ToArray Complete " <> (show <| tt8 - tt7)
 
-  foreachE processedValues ( show >>> log )
+  
+  -- foreachE processedValues ( show >>> log )
+  buffer <- createWriteStream "output.txt"
+  foreachE 
+    processedValues 
+    (\line -> do
+      _ <- writeString buffer UTF8 (show line) (pure unit)
+      pure unit
+    )
+  end buffer (pure unit)
+
   tt9 <- now
 
   log <| "Read Accounts Complete " <> (show <| tt1 - tt0)
@@ -85,6 +97,8 @@ main1 = do
   log <| "Total " <> (show <| tt9 - tt0)
   pure unit
 
+foo :: Int -> String
+foo str = (show str)
 
 rights :: forall a b. Array (Either a b) -> Array b
 rights array = mapMaybe hush array
