@@ -1,14 +1,15 @@
 defmodule TestElixir do
-  @input_file_accounts "../../accounts1.2m.txt"
-  @input_file_transactions "../../transactions10m.txt"
-  @output_file "../elixir-output.txt"
+  @input_file_accounts "../../../../../accounts1.2m.txt"
+  @input_file_transactions "../../../../../transactions10m.txt"
+  @output_file "../output.txt"
 
   def apply_transactions() do
-    IO.puts("Starting test...")
+    # IO.puts("Starting test...")
 
-    {time, result} = :timer.tc(fn -> do_apply_transactions() end)
+    # {time, result} = :timer.tc(fn -> do_apply_transactions() end)
+    result = do_apply_transactions()
 
-    IO.puts("It took a grand total of: #{time / 1_000_000} seconds.\n\n End test\n\n\n\t\tKILL with ^c")
+    # IO.puts("It took a grand total of: #{time / 1_000_000} seconds.")
 
     result
   end

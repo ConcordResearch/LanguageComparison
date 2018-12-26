@@ -22,6 +22,7 @@ defmodule Runner do
   @impl true
   def handle_cast(:run, _state) do
     TestElixir.apply_transactions()
+    System.halt()
     {:noreply, []}
   end
 
