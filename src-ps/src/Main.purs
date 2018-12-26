@@ -43,7 +43,7 @@ main1 = do
   accountsText <- readTextFile UTF8 "../accounts1.2m.txt"
   tt1 <- now
   log <| "Read Accounts Complete " <> (show <| tt1 - tt0)
-  transactionsText <- readTextFile UTF8 "../transactions10.txt"
+  transactionsText <- readTextFile UTF8 "../transactions10m.txt"
   tt2 <- now
   log <| "Read Transactions Complete " <> (show <| tt2 - tt1)
 
