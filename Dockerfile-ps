@@ -1,0 +1,16 @@
+FROM node:10.14
+COPY ./src-ps /src
+COPY ./files/accounts1.2m.txt /accounts1.2m.txt
+COPY ./files/transactions10m.txt /transactions10m.txt
+WORKDIR /src
+
+RUN npm install -g psvm psc-package pulp \
+&& psvm install v0.12.1 \
+&& psvm use v0.12.1 \
+&& ln -s /root/.psvm/current/bin/purs /bin/purs
+
+RUN psc-package build \
+&& pulp build -- --json-errors 2> errors.txt
+# USE FOR DEBUGGING # && pulp build
+
+
