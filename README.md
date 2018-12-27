@@ -25,6 +25,16 @@ Relative (Apprx.)|1|½|8|3.5|5|
 
 ## Potential Next Steps
 
+### To run a dockerized version of these tests
+``` bash
+./docker-build-test-images.sh
+./docker-test-runner.sh
+```
+On linux it looks like atop might be a good tool
+- <https://haydenjames.io/use-atop-linux-server-performance-analysis/>
+- <https://www.atoptool.nl/>
+
+
 ### C#
 - Pros
   * Performance without optimization
