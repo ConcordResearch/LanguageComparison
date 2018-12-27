@@ -1,0 +1,7 @@
+FROM microsoft/dotnet:2.2-sdk
+COPY ./src-cs /src
+COPY ./files/accounts1.2m.txt /accounts1.2m.txt
+COPY ./files/transactions10m.txt /transactions10m.txt
+WORKDIR /src
+
+RUN dotnet build -o ./out

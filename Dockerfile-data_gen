@@ -1,0 +1,4 @@
+FROM node:10.14
+COPY ./datascript-acct.js /src/
+COPY ./datascript-trans.js /src/
+VOLUME [ "/files" ]
