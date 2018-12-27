@@ -18,8 +18,9 @@ Languages being compared:
 
 |Machine|C#|Rust|PureScript|Haskell|Elixir|
 |-|-|-|-|-|-|
-|Alfredo|42s|18s|?|133s|182s|
-|Dave|42s|29s|x|108s|360s|
+|Alfredo|42s|18s|378s|156s|185s|
+|Dave|49s|20s|334s|184s|322s|
+Relative (Apprx.)|1|½|8|3.5|5|
 |(Memory)|4 GB|1.6 GB|x|12 GB|3 GB|
 
 ## Potential Next Steps
