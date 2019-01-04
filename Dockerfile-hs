@@ -4,4 +4,4 @@ COPY ./files/accounts1.2m.txt /accounts1.2m.txt
 COPY ./files/transactions10m.txt /transactions10m.txt
 WORKDIR /src
 
-RUN stack build --fast
+RUN stack build

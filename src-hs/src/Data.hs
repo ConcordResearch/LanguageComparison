@@ -22,7 +22,7 @@ import Data.Foldable (foldl')
 
 data Currency = USD | MXN | EUD | THB | GBP
   deriving (Eq, Ord, Generic)
-instance Hashable Currency 
+instance Hashable Currency
 
 instance TextShow Currency where
   -- for Text
@@ -41,11 +41,11 @@ instance TextShow Currency where
   showbList arr = unlinesB $ map showb arr
 
 data Money = Money
-  { _value :: Int
-  , _currency :: Currency
+  { _value :: !Int
+  , _currency :: !Currency
   }
 instance TextShow Money where
-  showt c = (showt $ _value c) <> " " <> (showt $ _currency c) 
+  showt c = (showt $ _value c) <> " " <> (showt $ _currency c)
   showb = fromText . showt
 
 newtype AccountNumber = AccountNumber Text
@@ -56,13 +56,13 @@ instance TextShow AccountNumber where
   showb = fromText . showt
 
 data Account = Account
-  { _accountNumber :: AccountNumber
-  , _balance :: Money
-  , _name :: Text
+  { _accountNumber :: !AccountNumber
+  , _balance :: !Money
+  , _name :: !Text
   }
 instance TextShow Account where
-  showt (Account acctNum bal name) = 
-    "Account { accountNumber: " 
+  showt (Account acctNum bal name) =
+    "Account { accountNumber: "
       <> showt acctNum
       <> ", balance: "
       <> showt bal
@@ -74,27 +74,27 @@ instance TextShow Account where
   showbList arr = unlinesB $ map showb arr
 
 data Transaction
-  = Bill 
-    { _accountNumber :: AccountNumber
-    , _amount :: Money
-    , _bucket :: Text
+  = Bill
+    { _accountNumber :: !AccountNumber
+    , _amount :: !Money
+    , _bucket :: !Text
     }
   | Payment
-    { _accountNumber :: AccountNumber
-    , _amount :: Money
-    , _source :: Text
+    { _accountNumber :: !AccountNumber
+    , _amount :: !Money
+    , _source :: !Text
     }
 instance TextShow Transaction where
-  showt (Bill acctNum amt bucket) = 
-    "Bill { accountNumber: " 
+  showt (Bill acctNum amt bucket) =
+    "Bill { accountNumber: "
       <> showt acctNum
       <> ", amount: "
       <> showt amt
       <> ", bucket: "
       <> showt bucket
       <> " }"
-  showt (Payment acctNum amt source) = 
-    "Bill - accountNumber: " 
+  showt (Payment acctNum amt source) =
+    "Bill - accountNumber: "
       <> showt acctNum
       <> ", amount: "
       <> showt amt
@@ -114,7 +114,7 @@ a1 = Account
   }
 
 t1 :: Transaction
-t1 = Bill 
+t1 = Bill
   { _accountNumber = AccountNumber "123"
   , _amount = Money
     { _value = 10
@@ -192,4 +192,3 @@ currency :: Lens' Money Currency
 currency f (Money v c) =
   (\a' -> Money { _value = v, _currency = a' } )
     <$> f c
-
