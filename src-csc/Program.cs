@@ -99,7 +99,7 @@ namespace CSharpConcPerfEval
 
     public static class CurrencyConverter
     {
-        public static readonly Dictionary<Currency[], double> dictExchangeRates = new Dictionary<Currency[], double>;
+        public static readonly Dictionary<Currency[], double> dictExchangeRates = new Dictionary<Currency[], double>();
 
         public static void Init(List<ExchangeRate> exchangeRates)
         {
