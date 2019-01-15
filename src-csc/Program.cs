@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace CSharpConcPerfEval
 {
@@ -148,10 +150,10 @@ namespace CSharpConcPerfEval
 
     public class Processor
     {
-        Dictionary<String, Account> accounts;
-        List<Transaction> transactions;
+        ConcurrentDictionary<String, Account> accounts;
+        ConcurrentBag<Transaction> transactions;
 
-        public Processor(Dictionary<String, Account> accounts, List<Transaction> transactions)
+        public Processor(ConcurrentDictionary<String, Account> accounts, ConcurrentBag<Transaction> transactions)
         {
             this.accounts = accounts;
             this.transactions = transactions;
@@ -195,12 +197,11 @@ namespace CSharpConcPerfEval
 
     public static class TransactionParser
     {
-        public static List<Transaction> ParseFile(string content)
+        public static ConcurrentBag<Transaction> ParseFile(string[] content)
         {
-            var transactions = new List<Transaction>();
-            foreach (var line in content.Split("\n"))
-            {
-                var columns = line.Split("|");
+            var transactions = new ConcurrentBag<Transaction>();
+            Parallel.For(0, content.Length, i => {           
+                var columns = content[i].Split("|");
                 Transaction transaction = null;
                 if (TryParse(columns, ref transaction))
                 {
@@ -208,9 +209,10 @@ namespace CSharpConcPerfEval
                 }
                 else
                 {
-                    Console.WriteLine($"Failed to import transaction: {line}");
+                    Console.WriteLine($"Failed to import transaction: {content[i]}");
                 }
-            }
+              }
+            );
 
             return transactions;
         }
@@ -266,23 +268,22 @@ namespace CSharpConcPerfEval
 
     public static class AccountParser
     {
-        public static Dictionary<String, Account> ParseFile(string content)
+        public static ConcurrentDictionary<String, Account> ParseFile(string[] content)
         {
-            var accounts = new Dictionary<String, Account>();
-            foreach (var line in content.Split("\n"))
+            var accounts = new ConcurrentDictionary<String, Account>();
+            Parallel.For(0, content.Length, i =>
             {
-                var columns = line.Split("|");
+                var columns = content[i].Split("|");
                 Account account = new Account();
                 if (TryParse(columns, ref account))
                 {
-                    accounts.Add(account.AccountNumber, account);
+                    accounts.TryAdd(account.AccountNumber, account);
                 }
                 else
                 {
-                    Console.WriteLine($"Failed to import account: {line}");
+                    Console.WriteLine($"Failed to import account: {content[i]}");
                 }
-            }
-
+            });
             return accounts;
         }
 
@@ -321,9 +322,9 @@ namespace CSharpConcPerfEval
 
     public class FileReader
     {
-        public string ReadFile(string path)
+        public string[] ReadFile(string path)
         {
-            return System.IO.File.ReadAllText(path);
+            return System.IO.File.ReadAllLines(path);
         }
     }
 
