@@ -161,14 +161,21 @@ namespace CSharpConcPerfEval
 
         public void Process()
         {
-            foreach (var transaction in transactions)
+            var rangePartitioner = Partitioner.Create(0, transactions.Count);
+            Parallel.ForEach(rangePartitioner, (range, loopState) =>
             {
-                Account account;
-                if (accounts.TryGetValue(transaction.AccountNumber, out account))
+                
+                for(int i = range.Item1; i < range.Item2; i++)
                 {
-                    ApplyTransactionToAccount(account, transaction);
+                    Account account;
+                    Transaction transaction;
+                    transactions.TryTake(out transaction);
+                    if (accounts.TryGetValue(transaction.AccountNumber, out account))
+                    {
+                        ApplyTransactionToAccount(account, transaction);
+                    }
                 }
-            }
+            });
         }
 
         private void ApplyTransactionToAccount(Account acct, Transaction trans)
