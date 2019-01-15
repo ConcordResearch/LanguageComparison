@@ -99,29 +99,36 @@ namespace CSharpConcPerfEval
 
     public static class CurrencyConverter
     {
-        public static readonly Dictionary<Currency[], double> dictExchangeRates = new Dictionary<Currency[], double>();
+        public static readonly Dictionary<Currency, Dictionary<Currency, ExchangeRate>> ExchangeRates = new Dictionary<Currency, Dictionary<Currency, ExchangeRate>>();
 
-        public static void Init(List<ExchangeRate> exchangeRates)
+        public static void Init(List<ExchangeRate> rates)
         {
-            foreach(ExchangeRate er in exchangeRates)
+            // from              // to      // rate
+            var dict = new Dictionary<Currency, ExchangeRate>();
+
+            foreach (var rate in rates)
             {
-                Currency[] currencyPair = new Currency[2] { er.From, er.To };
-                Currency[] currencyPairRev = new Currency[2] { er.To, er.From };
-                if (!dictExchangeRates.ContainsKey(currencyPair))
+                if (!ExchangeRates.ContainsKey(rate.From))
                 {
-                    dictExchangeRates.Add(currencyPair, er.Rate);
+                    ExchangeRates.Add(rate.From, new Dictionary<Currency, ExchangeRate>());
                 }
 
-                if (!dictExchangeRates.ContainsKey(currencyPairRev))
+                if (!ExchangeRates.ContainsKey(rate.To))
                 {
-                    dictExchangeRates.Add(currencyPairRev, 1 / er.Rate);
+                    ExchangeRates.Add(rate.To, new Dictionary<Currency, ExchangeRate>());
                 }
+            }
+
+            foreach (var rate in rates)
+            {
+                ExchangeRates[rate.From][rate.To] = rate;
+                ExchangeRates[rate.To][rate.From] = new ExchangeRate(rate.From, rate.To, 1 / rate.Rate);
             }
         }
 
         public static double Convert(Currency from, Currency to, double amount)
         {
-            return dictExchangeRates[new Currency[2] { from, to }] * amount;
+            return ExchangeRates[from][to].Rate * amount;
         }
     }
 
