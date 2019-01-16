@@ -207,16 +207,20 @@ namespace CSharpConcPerfEval
         public static ConcurrentBag<Transaction> ParseFile(string[] content)
         {
             var transactions = new ConcurrentBag<Transaction>();
-            Parallel.For(0, content.Length, i => {           
-                var columns = content[i].Split("|");
-                Transaction transaction = null;
-                if (TryParse(columns, ref transaction))
+            var rangePartitioner = Partitioner.Create(0, content.Length);
+            Parallel.ForEach(rangePartitioner, (range, loopState) => {
+                for (int i = range.Item1; i < range.Item2; i++)
                 {
-                    transactions.Add(transaction);
-                }
-                else
-                {
-                    Console.WriteLine($"Failed to import transaction: {content[i]}");
+                    var columns = content[i].Split("|");
+                    Transaction transaction = null;
+                    if (TryParse(columns, ref transaction))
+                    {
+                        transactions.Add(transaction);
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Failed to import transaction: {content[i]}");
+                    }
                 }
               }
             );
@@ -278,17 +282,21 @@ namespace CSharpConcPerfEval
         public static ConcurrentDictionary<String, Account> ParseFile(string[] content)
         {
             var accounts = new ConcurrentDictionary<String, Account>();
-            Parallel.For(0, content.Length, i =>
+            var rangePartitioner = Partitioner.Create(0, content.Length);
+            Parallel.ForEach(rangePartitioner, (range, loopState) => 
             {
-                var columns = content[i].Split("|");
-                Account account = new Account();
-                if (TryParse(columns, ref account))
+                for (int i = range.Item1; i < range.Item2; i++)
                 {
-                    accounts.TryAdd(account.AccountNumber, account);
-                }
-                else
-                {
-                    Console.WriteLine($"Failed to import account: {content[i]}");
+                    var columns = content[i].Split("|");
+                    Account account = new Account();
+                    if (TryParse(columns, ref account))
+                    {
+                        accounts.TryAdd(account.AccountNumber, account);
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Failed to import account: {content[i]}");
+                    }
                 }
             });
             return accounts;
