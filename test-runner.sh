@@ -26,7 +26,7 @@ echo ""
 
 cd src-hs
 rm output.txt
-stack build --fast &&\
+stack build &&\
 time stack run Main
 cd ..
 
